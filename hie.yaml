@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "app/Main.hs"
+      component: "CVSE:exe:CVSE"
+
+    - path: "app/Logger.hs"
+      component: "CVSE:exe:CVSE"
+
+    - path: "app/CsvProvider.hs"
+      component: "CVSE:exe:CVSE"
+
+    - path: "app/DatabaseProvider.hs"
+      component: "CVSE:exe:CVSE"
