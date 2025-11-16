@@ -7,8 +7,8 @@
             "label": "Build and transmission",
             "type": "shell",
             "command": [
-                "cabal build -j && ",
-                "scp dist-newstyle/build/x86_64-linux/ghc-9.12.2/CVSE-0.1.0.0/x/CVSE/build/CVSE/CVSE CVSE:~/CVSE_EXE/"
+                "stack build --flag mongoDB:-_old-network && ",
+                "scp .stack-work/dist/x86_64-linux/ghc-9.12.2/CVSE-0.1.0.0/x/CVSE/build/CVSE/CVSE CVSE:~/CVSE_EXE/"
             ],
             "problemMatcher": [],
             "group": {

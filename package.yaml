@@ -1,0 +1,55 @@
+name: CVSE
+version: 0.1.0
+description: CVSE RPC Server
+license: BSD-3-Clause
+author: "yhtq"
+maintainer: "1414672068@qq.com"
+copyright: "2025 yhtq"
+
+dependencies:
+    - base
+    - heftia-effects ^>= 0.7
+    - data-effects-core
+    - text
+    - time
+    - vector
+    - cassava
+    - bytestring
+    - mongoDB
+language: GHC2024
+default-extensions: LambdaCase,
+    OverloadedStrings,
+    DerivingStrategies,
+    DataKinds,
+    TypeFamilies,
+    BlockArguments,
+    FunctionalDependencies,
+    RecordWildCards,
+    DefaultSignatures,
+    PatternSynonyms,
+    TemplateHaskell,
+    PartialTypeSignatures,
+    AllowAmbiguousTypes
+# ghc-options:
+#     - -Wall
+#     - -Wcompat
+#     - -Widentities
+#     - -Wincomplete-record-updates
+#     - -Wincomplete-uni-patterns
+#     - -Wmissing-export-lists
+#     - -Wmissing-home-modules
+#     - -Wpartial-fields
+#     - -Wredundant-constraints
+
+library:
+    source-dirs: src
+
+executables:
+    CVSE-exe:
+        main: Main.hs
+        source-dirs: app
+        ghc-options:
+            - -threaded
+            - -rtsopts
+            - -with-rtsopts=-N
+
