@@ -1,197 +1,103 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+module Logger(
+    safeLiftIO,
+    fmtLogger,
+    setLoggerLevel,
+    outputLoggerToFile,
+    outputLoggerToStdout,
+    defaultLoggerHandler,
+    ErrMessage,
+    ExceptionE,
+    LogE,
+    logError,
+    logDebug,
+    logInfo,
+    logWarning
+) where
+import Prelude hiding (log)
+import Control.Monad.Hefty (Eff, Emb, liftIO, (:>), transform, raiseUnder, Throw)
+import Control.Monad.Hefty.Except (throw)
+import Control.Monad.Hefty.Log (log, runLogAction, Log)
+import Colog.Message (fmtRichMessageCustomDefault, Message(..), Msg(..))
+import Colog (
+    Severity(..), LogAction(..), logTextHandle, cmapM, fmtMessage, fmtRichMessageDefault, 
+    upgradeMessageAction, defaultFieldMap, logTextStdout,
+    filterBySeverity
+    )
+import Data.Text (Text, pack)
+import System.IO (openFile, IOMode(AppendMode))
+import Control.Exception.Base (catch, SomeException)
+import GHC.Stack (callStack, withFrozenCallStack)
 
--- SPDX-License-Identifier: MPL-2.0
+type ErrMessage = Text
+type ExceptionE = Throw ErrMessage
+type LogE = Log Message
 
-module Logger where
+-- wrap all IO exceptions into ErrMessage
+safeLiftIO :: forall es a. (Emb IO :> es, Throw ErrMessage :> es) => IO a -> Eff es a
+safeLiftIO c = do
+    io_result <- liftIO $ do
+        catch (Right <$> c)
+            (\(e :: SomeException) -> return $ Left (pack $ show e))
+    case io_result of
+        Right val -> pure val
+        Left err -> throw err
+{-# INLINE safeLiftIO #-}
 
-import Control.Arrow ((>>>))
-import Control.Effect.Transform (subsumeUnder)
-import Control.Monad (when)
-import Control.Monad.Hefty (
-    Eff,
-    Effect,
-    Emb,
-    FOEs,
-    interpose,
-    interpret,
-    liftIO,
-    makeEffectF,
-    makeEffectH,
-    raise,
-    raiseUnder,
-    reinterpret,
-    runEff,
-    (&),
-    type (:>),
-    type (~>),
-    type (~~>),
- )
-import Control.Monad.Hefty.Reader (runReader)
-import Control.Monad.Hefty.State (evalState)
-import Data.Effect.Reader (Ask, Local, ask, local)
-import Data.Effect.State (get, modify)
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Text.IO qualified as T
-import Data.Time (UTCTime, getCurrentTime)
-import Data.Time.Format (defaultTimeLocale, formatTime)
+transformLoggerAction :: (LogAction (Eff (Log n ': es)) n -> LogAction (Eff (Log n ': es)) m) 
+    -> Eff (Log m ': es) a -> Eff (Log n ': es) a
+transformLoggerAction f = runLogAction (f action)  . raiseUnder
+    where
+        action :: LogAction (Eff (Log n ': es)) n
+        action = LogAction {unLogAction = log}
+{-# INLINE transformLoggerAction #-}
 
-data Log :: Effect where
-    Logging :: Text -> Log f ()
-makeEffectF ''Log
+fmtLogger :: (Emb IO :> es) => Eff (Log Message ': es) a -> Eff (Log Text ': es) a
+fmtLogger = transformLoggerAction (upgradeMessageAction defaultFieldMap . cmapM fmtRichMessageDefault)
+{-# INLINE fmtLogger #-}
 
-logToIO :: (Emb IO :> es) => Eff (Log ': es) ~> Eff es
-logToIO = interpret \(Logging msg) -> liftIO $ T.putStrLn msg
+setLoggerLevel :: Severity -> Eff (Log Message ': es) a -> Eff (Log Message ': es) a
+-- setLoggerLevel level = runLogAction (filterBySeverity level msgSeverity action) . raiseUnder 
+--     where
+--         action = LogAction {unLogAction = log}
+setLoggerLevel level = transformLoggerAction (filterBySeverity level msgSeverity)
+{-# INLINE setLoggerLevel #-}
 
-data Time :: Effect where
-    CurrentTime :: Time f UTCTime
-makeEffectF ''Time
+outputLoggerToFile :: (Emb IO :> es, ExceptionE :> es) => FilePath -> Eff (Log Text ': es) a -> Eff es a
+outputLoggerToFile path f = 
+    handleM >>= (\handle ->
+        runLogAction (logTextHandle handle) f)
+    where 
+        handleM = safeLiftIO $ openFile path AppendMode
+{-# INLINE outputLoggerToFile #-}
 
-timeToIO :: (Emb IO :> es) => Eff (Time ': es) ~> Eff es
-timeToIO = interpret \CurrentTime -> liftIO getCurrentTime
+outputLoggerToStdout :: (Emb IO :> es, ExceptionE :> es) => Eff (Log Text ': es) a -> Eff es a
+outputLoggerToStdout = runLogAction logTextStdout
+{-# INLINE outputLoggerToStdout #-}
 
-logWithTime :: (Log :> es, Time :> es) => Eff es ~> Eff es
-logWithTime = interpose \(Logging msg) -> do
-    t <- currentTime
-    logging $ "[" <> iso8601 t <> "] " <> msg
+defaultLoggerHandler :: (Emb IO :> es, ExceptionE :> es) => FilePath -> Severity -> Eff (Log Message ': es) a -> Eff es a
+defaultLoggerHandler fp serve = 
+    outputLoggerToFile fp . fmtLogger . setLoggerLevel serve
+{-# INLINE defaultLoggerHandler #-}
 
-iso8601 :: UTCTime -> Text
-iso8601 t = T.take 23 (T.pack $ formatTime defaultTimeLocale "%FT%T.%q" t) <> "Z"
+log1 :: (LogE :> es) => Severity -> Text -> Eff es ()
+log1 sever msg = withFrozenCallStack $ log msg1
+    where
+        msg1 = Msg {
+            msgSeverity = sever,
+            msgStack = callStack,
+            msgText = msg        
+        }   
+{-# INLINE log1 #-}
 
--- | An effect that introduces a scope that represents a chunk of logs.
-data LogChunk :: Effect where
-    LogChunk
-        :: Text
-        -- ^ chunk name
-        -> f a
-        -> LogChunk f a
-
-makeEffectH ''LogChunk
-
--- | Ignore chunk names and output logs in log chunks as they are.
-runLogChunk :: Eff (LogChunk ': es) ~> Eff es
-runLogChunk = interpret \(LogChunk _ m) -> m
-
-data FileSystem :: Effect where
-    Mkdir :: FilePath -> FileSystem f ()
-    WriteToFile :: FilePath -> Text -> FileSystem f ()
-    ReadFromFile :: FilePath -> FileSystem f Text
-makeEffectF ''FileSystem
-
-runDummyFS :: (Emb IO :> es) => Eff (FileSystem ': es) ~> Eff es
-runDummyFS = interpret \case
-    Mkdir path ->
-        liftIO $ putStrLn $ "<runDummyFS> mkdir " <> path
-    WriteToFile path content ->
-        liftIO $ putStrLn $ "<runDummyFS> writeToFile " <> path <> " : " <> T.unpack content
-    ReadFromFile path -> do
-        liftIO $ putStrLn $ "<runDummyFS> readFromFile " <> path
-        pure "dummy content"
-
--- | Create directories according to the log-chunk structure and save one log in one file.
-saveLogChunk
-    :: forall es
-     . (LogChunk :> es, Log :> es, FileSystem :> es, Time :> es)
-    => Eff es ~> Eff es
-saveLogChunk =
-    raise
-        >>> raise
-        >>> hookCreateDirectory
-        >>> hookWriteFile
-        >>> runReader @FilePath "./log/"
-  where
-    hookCreateDirectory
-        , hookWriteFile
-            :: Eff (Local FilePath ': Ask FilePath ': es)
-                ~> Eff (Local FilePath ': Ask FilePath ': es)
-    hookCreateDirectory =
-        interpose \(LogChunk chunkName a) -> logChunk chunkName do
-            chunkBeginAt <- currentTime
-            let dirName = T.unpack $ iso8601 chunkBeginAt <> "-" <> chunkName
-            local @FilePath (++ dirName ++ "/") do
-                logChunkPath <- ask
-                mkdir logChunkPath
-                a
-
-    hookWriteFile =
-        interpose \(Logging msg) -> do
-            logChunkPath <- ask
-            logAt <- currentTime
-            writeToFile (T.unpack $ T.pack logChunkPath <> iso8601 logAt <> ".log") msg
-            logging msg
-
--- | Limit the number of logs in a log chunk to the first @n@ logs.
-limitLogChunk :: forall es. (Log :> es, FOEs es) => Int -> Eff (LogChunk ': Log ': es) ~> Eff (LogChunk ': Log ': es)
-limitLogChunk n = reinterpret $ handleLimitLogChunk n
-
-handleLimitLogChunk :: (Log :> es, FOEs es) => Int -> LogChunk ~~> Eff (LogChunk ': Log ': es)
-handleLimitLogChunk n (LogChunk name a) =
-    logChunk name do
-        raise . raise $ limitLog $ runLogChunk $ limitLogChunk n a
-  where
-    limitLog :: (Log :> es, FOEs es) => Eff (Log ': es) ~> Eff es
-    limitLog a' =
-        evalState @Int 0 $
-            raiseUnder a' & interpret \(Logging msg) -> do
-                count <- get
-                when (count < n) do
-                    logging msg
-                    when (count == n - 1) do
-                        logging "Subsequent logs are omitted..."
-
-                    modify @Int (+ 1)
-
-logExample :: (LogChunk :> es, Log :> es, Emb IO :> es) => Eff es ()
-logExample = do
-    logging "out of chunk scope 1"
-    logging "out of chunk scope 2"
-    logging "out of chunk scope 3"
-    logging "out of chunk scope 4"
-
-    liftIO $ putStrLn "------"
-
-    logChunk "scope1" do
-        logging "in scope1 1"
-        logging "in scope1 2"
-        logging "in scope1 3"
-        logging "in scope1 4"
-
-        liftIO $ putStrLn "------"
-
-        logChunk "scope2" do
-            logging "in scope2 1"
-            logging "in scope2 2"
-            logging "in scope2 3"
-            logging "in scope2 4"
-
-        liftIO $ putStrLn "------"
-
-        logging "in scope1 5"
-        logging "in scope1 6"
-
-saveThenLimit :: IO ()
-saveThenLimit =
-    logExample
-        & saveLogChunk
-        & limitLogChunk 2
-        & subsumeUnder
-        & runApp
-
-limitThenSave :: IO ()
-limitThenSave =
-    logExample
-        & limitLogChunk 2
-        & subsumeUnder
-        & saveLogChunk
-        & runApp
-
-runApp :: Eff '[LogChunk, FileSystem, Time, Log, Emb IO] ~> IO
-runApp =
-    runLogChunk
-        >>> runDummyFS
-        >>> logWithTime
-        >>> timeToIO
-        >>> logToIO
-        >>> runEff
+logError :: (LogE :> es) => Text -> Eff es ()
+logError = log1 Error
+{-# INLINE logError #-}
+logDebug :: (LogE :> es) => Text -> Eff es ()
+logDebug = log1 Debug
+{-# INLINE logDebug #-}
+logInfo :: (LogE :> es) => Text -> Eff es ()
+logInfo = log1 Info
+{-# INLINE logInfo #-}
+logWarning :: (LogE :> es) => Text -> Eff es ()
+logWarning = log1 Warning
+{-# INLINE logWarning #-}

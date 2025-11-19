@@ -5,7 +5,6 @@ license: BSD-3-Clause
 author: "yhtq"
 maintainer: "1414672068@qq.com"
 copyright: "2025 yhtq"
-
 dependencies:
     - base
     - heftia-effects ^>= 0.7
@@ -16,6 +15,10 @@ dependencies:
     - cassava
     - bytestring
     - mongoDB
+    - capnp
+    - co-log
+    - supervisors
+    - network-simple
 language: GHC2024
 default-extensions: LambdaCase,
     OverloadedStrings,
@@ -42,14 +45,26 @@ default-extensions: LambdaCase,
 #     - -Wredundant-constraints
 
 library:
-    source-dirs: src
+    source-dirs: 
+        src
 
 executables:
     CVSE-exe:
         main: Main.hs
-        source-dirs: app
+        source-dirs: 
+            app,
+            .,
+            Capnp
+        other-modules:
+            CsvProvider,
+            DatabaseProvider,
+            Logger,
+            Capnp.Gen.CVSEAPI.CVSE,
+            Capnp.Gen.ById.Xbc35d800bb63a3ae
+            
         ghc-options:
             - -threaded
             - -rtsopts
             - -with-rtsopts=-N
+            - -XDuplicateRecordFields
 

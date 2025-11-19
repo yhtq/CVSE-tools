@@ -39,6 +39,15 @@ extra-deps:
     - mongoDB-2.7.1.4
     - cryptohash-0.11.9
     - cryptonite-0.30
+    - capnp-0.18.0.0
+    - data-default-instances-vector-0.0.1@sha256:8a78beb491235231802c98fb1a58fea519359be1c9374b9f08d37feed34a385e,1791
+    - lifetimes-0.2.0.1@sha256:d7436bf8427c7feeb84c7e2c9a6f4cd92538a98680d31a1cffa9b8536965d9db,1985
+    - monad-stm-0.1.0.2@sha256:68c509a631cbb2f49c3e8b37527d281e6fdafbedac63a4c6fa69c98f4e0b2506,1732
+    - supervisors-0.2.1.0@sha256:87fdab514df15c0079160f0f0dab04449fbc791b12edf21f7ccd56ff05d705c8,2121
+    - zenhack-prelude-0.1.1.0@sha256:1ffdc0ad17e7c25786ef671f5889c165b325265b6d85ef4518a38fb1c52c446a,960
+allow-newer: true
+ghc-options: 
+    capnp: -XDuplicateRecordFields
 flags:
     mongoDB:
         _old-network: false

@@ -6,6 +6,12 @@ cradle:
     - path: "./app/Main.hs"
       component: "CVSE:exe:CVSE-exe"
 
+    - path: "././Main.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/Main.hs"
+      component: "CVSE:exe:CVSE-exe"
+
     - path: "./app/CsvProvider.hs"
       component: "CVSE:exe:CVSE-exe"
 
@@ -13,4 +19,40 @@ cradle:
       component: "CVSE:exe:CVSE-exe"
 
     - path: "./app/Logger.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./app/Capnp/Gen/CVSEAPI/CVSE.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./app/Capnp/Gen/ById/Xbc35d800bb63a3ae.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "././CsvProvider.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "././DatabaseProvider.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "././Logger.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "././Capnp/Gen/CVSEAPI/CVSE.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "././Capnp/Gen/ById/Xbc35d800bb63a3ae.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/CsvProvider.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/DatabaseProvider.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/Logger.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/Capnp/Gen/CVSEAPI/CVSE.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/Capnp/Gen/ById/Xbc35d800bb63a3ae.hs"
       component: "CVSE:exe:CVSE-exe"

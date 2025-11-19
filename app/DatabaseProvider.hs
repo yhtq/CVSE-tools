@@ -35,13 +35,13 @@ import Control.Monad.Hefty.Reader (runAsk, ask)
 import Data.Text (Text, pack)
 import Control.Monad.Hefty.Except (Catch, runCatch)
 import qualified Control.Monad.Hefty.Except as Except
+import Logger 
 
 
 newtype DataBaseHandler = DataBaseHandler Pipe
 newtype DataBaseTableHandler = DataBaseTableHandler (Pipe, Database)
 type DataBaseState = Ask DataBaseHandler
 type DataBaseTableState = Ask DataBaseTableHandler
-type ErrMessage = Text
 
 runThrow :: (FOEs es) => Eff (Throw e ': es) a -> Eff es (Either e a)
 runThrow = interpretBy (pure . Right) handleThrow
@@ -62,26 +62,16 @@ data DatabaseIO :: Effect where
     RunDbAction :: forall a f. Action IO a -> DatabaseIO f a
 makeEffectF ''DatabaseIO
 
--- wrap all IO exceptions into ErrMessage
-safeLiftIO :: forall es a. (Emb IO :> es, Throw ErrMessage :> es) => IO a -> Eff es a
-safeLiftIO c = do
-    io_result <- liftIO $ do
-        catch (Right <$> c)
-            (\(e :: SomeException) -> return $ Left (pack $ show e))
-    case io_result of
-        Right val -> pure val
-        Left err -> throw err
-
-runInDatabase :: forall es. (Emb IO :> es, Throw ErrMessage :> es, FOEs es) => Host -> (Eff (DataBaseState ': es) ~> Eff (Catch ErrMessage ': es))
+runInDatabase :: forall es. (Emb IO :> es, Throw ErrMessage :> es, LogE :> es, FOEs es) => Host -> (Eff (DataBaseState ': es) ~> Eff (Catch ErrMessage ': es))
 runInDatabase host = reinterpretWith __handler 
         where __handler :: AlgHandler DataBaseState f (Eff (Catch ErrMessage ': es)) a 
               __handler Ask f = do
                 pipe <- safeLiftIO $ connect host
-                safeLiftIO $ putStrLn "Database connected."
                 result <- Except.catch 
                     (Right <$> f (DataBaseHandler pipe))
-                    (\(e :: ErrMessage) -> pure $ Left e)
-                safeLiftIO $ putStrLn "Database connection closed."
+                    (\(e :: ErrMessage) -> do
+                        logDebug $ "Database connection error: " <> e
+                        pure $ Left e)
                 safeLiftIO $ close pipe
                 case result of
                     Right val -> pure val

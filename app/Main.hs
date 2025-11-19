@@ -14,49 +14,26 @@ import Control.Monad.Hefty (runEff, liftIO, raise, runPure)
 import Database.MongoDB 
 import Control.Monad.Hefty.Except (throw, runCatch)
 import Control.Monad(void)
+import Capnp (SomeServer, def, defaultLimit, export, handleParsed)
+import Capnp.Rpc (ConnConfig (..), handleConn, socketTransport, toClient)
+import Network.Simple.TCP (serve)
+import Supervisors (withSupervisor)
+import Logger (outputLoggerToFile, fmtLogger)
+import Colog (logError, logDebug, logInfo, logWarning)
 
+import Capnp.Gen.CVSEAPI.CVSE (Cvse'server_(..))
 
+logFilePath :: FilePath
+logFilePath = "cvse_log"
 
--- video_info_data :: FilePath
--- video_point_data :: FilePath
--- video_info_data  = "/home/yhtq/data/cvse_video_info_data.csv"
--- video_point_data = "/home/yhtq/data/cvse_video_point_data.csv"
+data MyEchoServer = MyEchoServer
 
--- -- A text type show as Unicode string
--- newtype TextUnicode = TextUnicode Text deriving (Eq, FromField)
+instance SomeServer MyEchoServer
 
--- instance Show TextUnicode where
---     showsPrec :: Int -> TextUnicode -> ShowS
---     showsPrec _ (TextUnicode t) = showString (unpack t)
-
--- data VideoInfo = VideoInfo
---     { avid      :: !TextUnicode
---     , duration      :: !Int
---     , desc  :: !TextUnicode
---     , pubdate  :: !TextUnicode
---     , bvid  :: !TextUnicode
---     , upid  :: !(Maybe Int)
---     , video_tags  :: !TextUnicode
---     , pubdate_unix    :: !Int
---     , upname :: !TextUnicode
---     , picture :: !TextUnicode
---     } deriving (Show, Generic)
-
--- -- instance Show VideoInfo where
--- --     showsPrec p vi = showParen (p > 10) $
--- --         showString "VideoInfo { avid = " . showsPrec 11 (TextUnicode $ avid vi) .
--- --         showString ", duration = " . showsPrec 11 (duration vi) .
--- --         showString ", desc = " . showsPrec 11 (TextUnicode $ desc vi) .
--- --         showString ", pubdate = " . showsPrec 11 (TextUnicode $ pubdate vi) .
--- --         showString ", bvid = " . showsPrec 11 (TextUnicode $ bvid vi) .
--- --         showString ", upid = " . showsPrec 11 (upid vi) .
--- --         showString ", video_tags = " . showsPrec 11 (TextUnicode $ video_tags vi) .
--- --         showString ", pubdate_unix = " . showsPrec 11 (pubdate_unix vi) .
--- --         showString ", upname = " . showsPrec 11 (TextUnicode $ upname vi) .
--- --         showString ", picture = " . showsPrec 11 (TextUnicode $ picture vi) .
--- --         showString " }"
-
--- instance FromNamedRecord VideoInfo
+instance Cvse'server_ MyEchoServer where
+   cvse'updateModifyEntry _ = handleParsed (\entries -> return def)
+   cvse'updateNewEntry _ = handleParsed (\entries -> return def)
+   cvse'updateAddressingDataEntry _ = handleParsed (\entries -> return def)
 
 
 run :: Action IO ()
@@ -91,7 +68,13 @@ printDocs :: Text -> [Document] -> Action IO ()
 printDocs title docs = liftIO $ putStrLn title >> mapM_ (print . exclude ["_id"]) docs
 
 main :: IO ()
-main = runEff . void . runThrowPrint . runCatch  . (runInDatabase (host "127.0.0.1")) . (runInDatabaseTable "cvse_db")  . runDatabaseIO $ do
+main = runEff . void . 
+   runThrowPrint . 
+   outputLoggerToFile logFilePath . fmtLogger . 
+   runCatch . 
+   runInDatabase (host "127.0.0.1") . 
+   runInDatabaseTable "cvse_db"  . 
+   runDatabaseIO $ do
     liftIO $ putStrLn "Database setup complete."
     runDbAction run
     throw "Test error message."
