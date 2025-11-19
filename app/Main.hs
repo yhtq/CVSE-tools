@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 module Main (main) where
 
 import Prelude hiding (show, putStrLn)
@@ -10,72 +11,107 @@ import Data.Text.IO (putStrLn)
 import Data.Text.IO.Utf8 qualified as TIO
 import CsvProvider
 import DatabaseProvider
-import Control.Monad.Hefty (runEff, liftIO, raise, runPure)
+import Control.Monad.Hefty (runEff, liftIO, raise, runPure, Eff, Emb, Throw, Catch, Ask)
 import Database.MongoDB 
 import Control.Monad.Hefty.Except (throw, runCatch)
 import Control.Monad(void)
 import Capnp (SomeServer, def, defaultLimit, export, handleParsed)
-import Capnp.Rpc (ConnConfig (..), handleConn, socketTransport, toClient)
+import Capnp.Rpc (ConnConfig (..), handleConn, socketTransport, toClient, throwFailed)
 import Network.Simple.TCP (serve)
 import Supervisors (withSupervisor)
-import Logger (outputLoggerToFile, fmtLogger)
-import Colog (logError, logDebug, logInfo, logWarning)
+import Logger 
+import Colog (Severity (..))
 
-import Capnp.Gen.CVSEAPI.CVSE (Cvse'server_(..))
+import Capnp.Gen.CVSEAPI.CVSE (Cvse'server_(..), Parsed (entries), Cvse)
+import CVSEDatabase
+import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 
 logFilePath :: FilePath
-logFilePath = "cvse_log"
+logFilePath = "cvse_service.log"
 
-data MyEchoServer = MyEchoServer
+data MyServer = MyServer {
+   peer :: Text,
+   databaseServer :: Host,
+   databasePort :: Maybe Int,
+   databaseName :: Database
+}
 
-instance SomeServer MyEchoServer
+instance SomeServer MyServer
 
-instance Cvse'server_ MyEchoServer where
-   cvse'updateModifyEntry _ = handleParsed (\entries -> return def)
-   cvse'updateNewEntry _ = handleParsed (\entries -> return def)
-   cvse'updateAddressingDataEntry _ = handleParsed (\entries -> return def)
+mainHandler :: Host -> Database -> Eff '[
+   DatabaseIO, 
+   DataBaseTableState, 
+   LogE, 
+   Throw ErrMessage,
+   Emb IO] a -> IO (Either ErrMessage a)
+mainHandler host database  = runEff . 
+         runThrow .
+         runCatch . 
+         defaultLoggerHandler logFilePath Debug . 
+         runCatch . 
+         runInDatabase host . 
+         runInDatabaseTable database  . 
+         runDatabaseIO 
 
+mainWrapper :: MyServer -> Eff '[
+   DatabaseIO, 
+   DataBaseTableState, 
+   LogE, 
+   Throw ErrMessage,
+   Emb IO] a -> IO a
+mainWrapper server action = do
+   result <- mainHandler server.databaseServer server.databaseName action
+   case result of
+      Left err -> throwFailed err
+      Right val -> return val
 
-run :: Action IO ()
-run = do
-   clearTeams
-   insertTeams
-   allTeams >>= printDocs "All Teams"
-   nationalLeagueTeams >>= printDocs "National League Teams"
-   newYorkTeams >>= printDocs "New York Teams"
-   clearTeams
+instance Cvse'server_ MyServer where
+   cvse'updateModifyEntry server = handleParsed (
+      \param -> mainWrapper server $ do
+            $(logInfo) $ "Received ModifyRankEntry update from client: " <> server.peer
+            runDbAction $
+               updateMany videoMetadataCollection (fmap updateModifyRank param.entries)
+            return def
+      )
+   cvse'updateNewEntry server = handleParsed (
+      \param -> mainWrapper server $ do
+         $(logInfo) $ "Received RecordingNewEntry from client: " <> server.peer
+         runDbAction $ do
+            insertMany_ videoMetadataCollection (fmap insertNewVideo param.entries)
+         return def
+      )
+   cvse'updateRecordingDataEntry server = handleParsed (
+      \param -> mainWrapper server $ do
+         $(logInfo) $ "Received RecordingDataEntry update from client: " <> server.peer
+         runDbAction $ do
+            insertMany_ videoStatsCollection (fmap insertNewStats param.entries)
+         return def
+      )
 
-clearTeams :: Action IO ()
-clearTeams = delete (select [] "team")
+serverAddr = "localhost"
 
-insertTeams :: Action IO [Value]
-insertTeams = insertMany "team" [
-   ["name" =: "Yankees", "home" =: ["city" =: "New York", "state" =: "NY"], "league" =: "American"],
-   ["name" =: "Mets", "home" =: ["city" =: "New York", "state" =: "NY"], "league" =: "National"],
-   ["name" =: "Phillies", "home" =: ["city" =: "Philadelphia", "state" =: "PA"], "league" =: "National"],
-   ["name" =: "Red Sox", "home" =: ["city" =: "Boston", "state" =: "MA"], "league" =: "American"] ]
-
-allTeams :: Action IO [Document]
-allTeams = rest =<< find (select [] "team") {sort = ["home.city" =: 1]}
-
-nationalLeagueTeams :: Action IO [Document]
-nationalLeagueTeams = rest =<< find (select ["league" =: "National"] "team")
-
-newYorkTeams :: Action IO [Document]
-newYorkTeams = rest =<< find (select ["home.state" =: "NY"] "team") {project = ["name" =: 1, "league" =: 1]}
-
-printDocs :: Text -> [Document] -> Action IO ()
-printDocs title docs = liftIO $ putStrLn title >> mapM_ (print . exclude ["_id"]) docs
+serverPort  = "8663"
 
 main :: IO ()
-main = runEff . void . 
-   runThrowPrint . 
-   outputLoggerToFile logFilePath . fmtLogger . 
-   runCatch . 
-   runInDatabase (host "127.0.0.1") . 
-   runInDatabaseTable "cvse_db"  . 
-   runDatabaseIO $ do
-    liftIO $ putStrLn "Database setup complete."
-    runDbAction run
-    throw "Test error message."
-    liftIO $ putStrLn "Deleted all documents from 'team' collection."
+main = withSupervisor  $ \sup -> do
+   let dbHost = host "127.0.0.1"
+   let dbPort = Nothing
+   let dbName = "cvse_db"
+   let server = MyServer {
+         peer = "",
+         databaseServer = dbHost,
+         databasePort = dbPort,
+         databaseName = dbName
+      }
+   putStrLn $ "Starting CVSE RPC server at " <> show serverAddr <> ":" <> show serverPort
+   serve serverAddr serverPort $ \(sock, addr) -> do
+      let server1 = server { peer = show addr <> " " <> show sock } 
+      boot <- export @Cvse sup server1
+      handleConn 
+         (socketTransport sock defaultLimit) 
+         def {
+            debugMode = False,
+            bootstrap = Just (toClient boot)
+         }
+   

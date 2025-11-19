@@ -44,20 +44,20 @@ instance (GH.Export Cvse) where
     type Server Cvse = Cvse'server_
     methodHandlerTree _ s_ = (GH.MethodHandlerTree (C.typeId @(Cvse)) [(GH.toUntypedMethodHandler ((cvse'updateModifyEntry) s_))
                                                                       ,(GH.toUntypedMethodHandler ((cvse'updateNewEntry) s_))
-                                                                      ,(GH.toUntypedMethodHandler ((cvse'updateAddressingDataEntry) s_))] [])
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'updateRecordingDataEntry) s_))] [])
 class (Cvse'server_ s_) where
-    {-# MINIMAL cvse'updateModifyEntry,cvse'updateNewEntry,cvse'updateAddressingDataEntry #-}
+    {-# MINIMAL cvse'updateModifyEntry,cvse'updateNewEntry,cvse'updateRecordingDataEntry #-}
     cvse'updateModifyEntry :: s_ -> (GH.MethodHandler Cvse'updateModifyEntry'params Cvse'updateModifyEntry'results)
     cvse'updateModifyEntry _ = GH.methodUnimplemented
     cvse'updateNewEntry :: s_ -> (GH.MethodHandler Cvse'updateNewEntry'params Cvse'updateNewEntry'results)
     cvse'updateNewEntry _ = GH.methodUnimplemented
-    cvse'updateAddressingDataEntry :: s_ -> (GH.MethodHandler Cvse'updateAddressingDataEntry'params Cvse'updateAddressingDataEntry'results)
-    cvse'updateAddressingDataEntry _ = GH.methodUnimplemented
+    cvse'updateRecordingDataEntry :: s_ -> (GH.MethodHandler Cvse'updateRecordingDataEntry'params Cvse'updateRecordingDataEntry'results)
+    cvse'updateRecordingDataEntry _ = GH.methodUnimplemented
 instance (GH.HasMethod "updateModifyEntry" Cvse Cvse'updateModifyEntry'params Cvse'updateModifyEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 0)
 instance (GH.HasMethod "updateNewEntry" Cvse Cvse'updateNewEntry'params Cvse'updateNewEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 1)
-instance (GH.HasMethod "updateAddressingDataEntry" Cvse Cvse'updateAddressingDataEntry'params Cvse'updateAddressingDataEntry'results) where
+instance (GH.HasMethod "updateRecordingDataEntry" Cvse Cvse'updateRecordingDataEntry'params Cvse'updateRecordingDataEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 2)
 data Cvse'updateModifyEntry'params 
 type instance (R.ReprFor Cvse'updateModifyEntry'params) = (R.Ptr (Std_.Just R.Struct))
@@ -131,7 +131,7 @@ instance (C.AllocateList Cvse'updateNewEntry'params) where
 instance (C.EstimateListAlloc Cvse'updateNewEntry'params (C.Parsed Cvse'updateNewEntry'params))
 data instance C.Parsed Cvse'updateNewEntry'params
     = Cvse'updateNewEntry'params 
-        {entries :: (RP.Parsed (R.List Cvse'AddressingNewEntry))}
+        {entries :: (RP.Parsed (R.List Cvse'RecordingNewEntry))}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'updateNewEntry'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'updateNewEntry'params))
@@ -142,7 +142,7 @@ instance (C.Marshal Cvse'updateNewEntry'params (C.Parsed Cvse'updateNewEntry'par
         (GH.encodeField #entries entries raw_)
         (Std_.pure ())
         )
-instance (GH.HasField "entries" GH.Slot Cvse'updateNewEntry'params (R.List Cvse'AddressingNewEntry)) where
+instance (GH.HasField "entries" GH.Slot Cvse'updateNewEntry'params (R.List Cvse'RecordingNewEntry)) where
     fieldByLabel  = (GH.ptrField 0)
 data Cvse'updateNewEntry'results 
 type instance (R.ReprFor Cvse'updateNewEntry'results) = (R.Ptr (Std_.Just R.Struct))
@@ -169,101 +169,61 @@ instance (C.Parse Cvse'updateNewEntry'results (C.Parsed Cvse'updateNewEntry'resu
     parse raw_ = (Std_.pure Cvse'updateNewEntry'results)
 instance (C.Marshal Cvse'updateNewEntry'results (C.Parsed Cvse'updateNewEntry'results)) where
     marshalInto _raw (Cvse'updateNewEntry'results) = (Std_.pure ())
-data Cvse'updateAddressingDataEntry'params 
-type instance (R.ReprFor Cvse'updateAddressingDataEntry'params) = (R.Ptr (Std_.Just R.Struct))
-instance (C.HasTypeId Cvse'updateAddressingDataEntry'params) where
+data Cvse'updateRecordingDataEntry'params 
+type instance (R.ReprFor Cvse'updateRecordingDataEntry'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'updateRecordingDataEntry'params) where
     typeId  = 18402389460281104284
-instance (C.TypedStruct Cvse'updateAddressingDataEntry'params) where
+instance (C.TypedStruct Cvse'updateRecordingDataEntry'params) where
     numStructWords  = 0
     numStructPtrs  = 1
-instance (C.Allocate Cvse'updateAddressingDataEntry'params) where
-    type AllocHint Cvse'updateAddressingDataEntry'params = ()
+instance (C.Allocate Cvse'updateRecordingDataEntry'params) where
+    type AllocHint Cvse'updateRecordingDataEntry'params = ()
     new _ = C.newTypedStruct
-instance (C.EstimateAlloc Cvse'updateAddressingDataEntry'params (C.Parsed Cvse'updateAddressingDataEntry'params))
-instance (C.AllocateList Cvse'updateAddressingDataEntry'params) where
-    type ListAllocHint Cvse'updateAddressingDataEntry'params = Std_.Int
+instance (C.EstimateAlloc Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params))
+instance (C.AllocateList Cvse'updateRecordingDataEntry'params) where
+    type ListAllocHint Cvse'updateRecordingDataEntry'params = Std_.Int
     newList  = C.newTypedStructList
-instance (C.EstimateListAlloc Cvse'updateAddressingDataEntry'params (C.Parsed Cvse'updateAddressingDataEntry'params))
-data instance C.Parsed Cvse'updateAddressingDataEntry'params
-    = Cvse'updateAddressingDataEntry'params 
-        {entries :: (RP.Parsed (R.List Cvse'AddressingDataEntry))}
+instance (C.EstimateListAlloc Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params))
+data instance C.Parsed Cvse'updateRecordingDataEntry'params
+    = Cvse'updateRecordingDataEntry'params 
+        {entries :: (RP.Parsed (R.List Cvse'RecordingDataEntry))}
     deriving(Generics.Generic)
-deriving instance (Std_.Show (C.Parsed Cvse'updateAddressingDataEntry'params))
-deriving instance (Std_.Eq (C.Parsed Cvse'updateAddressingDataEntry'params))
-instance (C.Parse Cvse'updateAddressingDataEntry'params (C.Parsed Cvse'updateAddressingDataEntry'params)) where
-    parse raw_ = (Cvse'updateAddressingDataEntry'params <$> (GH.parseField #entries raw_))
-instance (C.Marshal Cvse'updateAddressingDataEntry'params (C.Parsed Cvse'updateAddressingDataEntry'params)) where
-    marshalInto raw_ Cvse'updateAddressingDataEntry'params{..} = (do
+deriving instance (Std_.Show (C.Parsed Cvse'updateRecordingDataEntry'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'updateRecordingDataEntry'params))
+instance (C.Parse Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params)) where
+    parse raw_ = (Cvse'updateRecordingDataEntry'params <$> (GH.parseField #entries raw_))
+instance (C.Marshal Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params)) where
+    marshalInto raw_ Cvse'updateRecordingDataEntry'params{..} = (do
         (GH.encodeField #entries entries raw_)
         (Std_.pure ())
         )
-instance (GH.HasField "entries" GH.Slot Cvse'updateAddressingDataEntry'params (R.List Cvse'AddressingDataEntry)) where
+instance (GH.HasField "entries" GH.Slot Cvse'updateRecordingDataEntry'params (R.List Cvse'RecordingDataEntry)) where
     fieldByLabel  = (GH.ptrField 0)
-data Cvse'updateAddressingDataEntry'results 
-type instance (R.ReprFor Cvse'updateAddressingDataEntry'results) = (R.Ptr (Std_.Just R.Struct))
-instance (C.HasTypeId Cvse'updateAddressingDataEntry'results) where
+data Cvse'updateRecordingDataEntry'results 
+type instance (R.ReprFor Cvse'updateRecordingDataEntry'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'updateRecordingDataEntry'results) where
     typeId  = 16742526759880192168
-instance (C.TypedStruct Cvse'updateAddressingDataEntry'results) where
+instance (C.TypedStruct Cvse'updateRecordingDataEntry'results) where
     numStructWords  = 0
     numStructPtrs  = 0
-instance (C.Allocate Cvse'updateAddressingDataEntry'results) where
-    type AllocHint Cvse'updateAddressingDataEntry'results = ()
+instance (C.Allocate Cvse'updateRecordingDataEntry'results) where
+    type AllocHint Cvse'updateRecordingDataEntry'results = ()
     new _ = C.newTypedStruct
-instance (C.EstimateAlloc Cvse'updateAddressingDataEntry'results (C.Parsed Cvse'updateAddressingDataEntry'results))
-instance (C.AllocateList Cvse'updateAddressingDataEntry'results) where
-    type ListAllocHint Cvse'updateAddressingDataEntry'results = Std_.Int
+instance (C.EstimateAlloc Cvse'updateRecordingDataEntry'results (C.Parsed Cvse'updateRecordingDataEntry'results))
+instance (C.AllocateList Cvse'updateRecordingDataEntry'results) where
+    type ListAllocHint Cvse'updateRecordingDataEntry'results = Std_.Int
     newList  = C.newTypedStructList
-instance (C.EstimateListAlloc Cvse'updateAddressingDataEntry'results (C.Parsed Cvse'updateAddressingDataEntry'results))
-data instance C.Parsed Cvse'updateAddressingDataEntry'results
-    = Cvse'updateAddressingDataEntry'results 
+instance (C.EstimateListAlloc Cvse'updateRecordingDataEntry'results (C.Parsed Cvse'updateRecordingDataEntry'results))
+data instance C.Parsed Cvse'updateRecordingDataEntry'results
+    = Cvse'updateRecordingDataEntry'results 
         {}
     deriving(Generics.Generic)
-deriving instance (Std_.Show (C.Parsed Cvse'updateAddressingDataEntry'results))
-deriving instance (Std_.Eq (C.Parsed Cvse'updateAddressingDataEntry'results))
-instance (C.Parse Cvse'updateAddressingDataEntry'results (C.Parsed Cvse'updateAddressingDataEntry'results)) where
-    parse raw_ = (Std_.pure Cvse'updateAddressingDataEntry'results)
-instance (C.Marshal Cvse'updateAddressingDataEntry'results (C.Parsed Cvse'updateAddressingDataEntry'results)) where
-    marshalInto _raw (Cvse'updateAddressingDataEntry'results) = (Std_.pure ())
-data Cvse'DayDate 
-type instance (R.ReprFor Cvse'DayDate) = (R.Ptr (Std_.Just R.Struct))
-instance (C.HasTypeId Cvse'DayDate) where
-    typeId  = 14557538036996046821
-instance (C.TypedStruct Cvse'DayDate) where
-    numStructWords  = 1
-    numStructPtrs  = 0
-instance (C.Allocate Cvse'DayDate) where
-    type AllocHint Cvse'DayDate = ()
-    new _ = C.newTypedStruct
-instance (C.EstimateAlloc Cvse'DayDate (C.Parsed Cvse'DayDate))
-instance (C.AllocateList Cvse'DayDate) where
-    type ListAllocHint Cvse'DayDate = Std_.Int
-    newList  = C.newTypedStructList
-instance (C.EstimateListAlloc Cvse'DayDate (C.Parsed Cvse'DayDate))
-data instance C.Parsed Cvse'DayDate
-    = Cvse'DayDate 
-        {year :: (RP.Parsed Std_.Int16)
-        ,month :: (RP.Parsed Std_.Int8)
-        ,day :: (RP.Parsed Std_.Int8)}
-    deriving(Generics.Generic)
-deriving instance (Std_.Show (C.Parsed Cvse'DayDate))
-deriving instance (Std_.Eq (C.Parsed Cvse'DayDate))
-instance (C.Parse Cvse'DayDate (C.Parsed Cvse'DayDate)) where
-    parse raw_ = (Cvse'DayDate <$> (GH.parseField #year raw_)
-                               <*> (GH.parseField #month raw_)
-                               <*> (GH.parseField #day raw_))
-instance (C.Marshal Cvse'DayDate (C.Parsed Cvse'DayDate)) where
-    marshalInto raw_ Cvse'DayDate{..} = (do
-        (GH.encodeField #year year raw_)
-        (GH.encodeField #month month raw_)
-        (GH.encodeField #day day raw_)
-        (Std_.pure ())
-        )
-instance (GH.HasField "year" GH.Slot Cvse'DayDate Std_.Int16) where
-    fieldByLabel  = (GH.dataField 0 0 16 0)
-instance (GH.HasField "month" GH.Slot Cvse'DayDate Std_.Int8) where
-    fieldByLabel  = (GH.dataField 16 0 8 0)
-instance (GH.HasField "day" GH.Slot Cvse'DayDate Std_.Int8) where
-    fieldByLabel  = (GH.dataField 24 0 8 0)
+deriving instance (Std_.Show (C.Parsed Cvse'updateRecordingDataEntry'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'updateRecordingDataEntry'results))
+instance (C.Parse Cvse'updateRecordingDataEntry'results (C.Parsed Cvse'updateRecordingDataEntry'results)) where
+    parse raw_ = (Std_.pure Cvse'updateRecordingDataEntry'results)
+instance (C.Marshal Cvse'updateRecordingDataEntry'results (C.Parsed Cvse'updateRecordingDataEntry'results)) where
+    marshalInto _raw (Cvse'updateRecordingDataEntry'results) = (Std_.pure ())
 data Cvse'Rank 
 type instance (R.ReprFor Cvse'Rank) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'Rank) where
@@ -352,8 +312,11 @@ data instance C.Parsed Cvse'ModifyEntry
     = Cvse'ModifyEntry 
         {avid :: (RP.Parsed Basics.Text)
         ,bvid :: (RP.Parsed Basics.Text)
+        ,hasRanks :: (RP.Parsed Std_.Bool)
         ,ranks :: (RP.Parsed (R.List Cvse'Rank))
+        ,hasIsRepublish :: (RP.Parsed Std_.Bool)
         ,isRepublish :: (RP.Parsed Std_.Bool)
+        ,hasStaffInfo :: (RP.Parsed Std_.Bool)
         ,staffInfo :: (RP.Parsed Basics.Text)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'ModifyEntry))
@@ -361,15 +324,21 @@ deriving instance (Std_.Eq (C.Parsed Cvse'ModifyEntry))
 instance (C.Parse Cvse'ModifyEntry (C.Parsed Cvse'ModifyEntry)) where
     parse raw_ = (Cvse'ModifyEntry <$> (GH.parseField #avid raw_)
                                    <*> (GH.parseField #bvid raw_)
+                                   <*> (GH.parseField #hasRanks raw_)
                                    <*> (GH.parseField #ranks raw_)
+                                   <*> (GH.parseField #hasIsRepublish raw_)
                                    <*> (GH.parseField #isRepublish raw_)
+                                   <*> (GH.parseField #hasStaffInfo raw_)
                                    <*> (GH.parseField #staffInfo raw_))
 instance (C.Marshal Cvse'ModifyEntry (C.Parsed Cvse'ModifyEntry)) where
     marshalInto raw_ Cvse'ModifyEntry{..} = (do
         (GH.encodeField #avid avid raw_)
         (GH.encodeField #bvid bvid raw_)
+        (GH.encodeField #hasRanks hasRanks raw_)
         (GH.encodeField #ranks ranks raw_)
+        (GH.encodeField #hasIsRepublish hasIsRepublish raw_)
         (GH.encodeField #isRepublish isRepublish raw_)
+        (GH.encodeField #hasStaffInfo hasStaffInfo raw_)
         (GH.encodeField #staffInfo staffInfo raw_)
         (Std_.pure ())
         )
@@ -377,29 +346,35 @@ instance (GH.HasField "avid" GH.Slot Cvse'ModifyEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 0)
 instance (GH.HasField "bvid" GH.Slot Cvse'ModifyEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 1)
+instance (GH.HasField "hasRanks" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 0 0 1 0)
 instance (GH.HasField "ranks" GH.Slot Cvse'ModifyEntry (R.List Cvse'Rank)) where
     fieldByLabel  = (GH.ptrField 2)
+instance (GH.HasField "hasIsRepublish" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 1 0 1 0)
 instance (GH.HasField "isRepublish" GH.Slot Cvse'ModifyEntry Std_.Bool) where
-    fieldByLabel  = (GH.dataField 0 0 1 0)
+    fieldByLabel  = (GH.dataField 2 0 1 0)
+instance (GH.HasField "hasStaffInfo" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 3 0 1 0)
 instance (GH.HasField "staffInfo" GH.Slot Cvse'ModifyEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 3)
-data Cvse'AddressingNewEntry 
-type instance (R.ReprFor Cvse'AddressingNewEntry) = (R.Ptr (Std_.Just R.Struct))
-instance (C.HasTypeId Cvse'AddressingNewEntry) where
-    typeId  = 16118650743386912332
-instance (C.TypedStruct Cvse'AddressingNewEntry) where
+data Cvse'RecordingNewEntry 
+type instance (R.ReprFor Cvse'RecordingNewEntry) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'RecordingNewEntry) where
+    typeId  = 13146097098386807052
+instance (C.TypedStruct Cvse'RecordingNewEntry) where
     numStructWords  = 2
     numStructPtrs  = 9
-instance (C.Allocate Cvse'AddressingNewEntry) where
-    type AllocHint Cvse'AddressingNewEntry = ()
+instance (C.Allocate Cvse'RecordingNewEntry) where
+    type AllocHint Cvse'RecordingNewEntry = ()
     new _ = C.newTypedStruct
-instance (C.EstimateAlloc Cvse'AddressingNewEntry (C.Parsed Cvse'AddressingNewEntry))
-instance (C.AllocateList Cvse'AddressingNewEntry) where
-    type ListAllocHint Cvse'AddressingNewEntry = Std_.Int
+instance (C.EstimateAlloc Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry))
+instance (C.AllocateList Cvse'RecordingNewEntry) where
+    type ListAllocHint Cvse'RecordingNewEntry = Std_.Int
     newList  = C.newTypedStructList
-instance (C.EstimateListAlloc Cvse'AddressingNewEntry (C.Parsed Cvse'AddressingNewEntry))
-data instance C.Parsed Cvse'AddressingNewEntry
-    = Cvse'AddressingNewEntry 
+instance (C.EstimateListAlloc Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry))
+data instance C.Parsed Cvse'RecordingNewEntry
+    = Cvse'RecordingNewEntry 
         {avid :: (RP.Parsed Basics.Text)
         ,bvid :: (RP.Parsed Basics.Text)
         ,title :: (RP.Parsed Basics.Text)
@@ -413,23 +388,23 @@ data instance C.Parsed Cvse'AddressingNewEntry
         ,desc :: (RP.Parsed Basics.Text)
         ,tags :: (RP.Parsed (R.List Basics.Text))}
     deriving(Generics.Generic)
-deriving instance (Std_.Show (C.Parsed Cvse'AddressingNewEntry))
-deriving instance (Std_.Eq (C.Parsed Cvse'AddressingNewEntry))
-instance (C.Parse Cvse'AddressingNewEntry (C.Parsed Cvse'AddressingNewEntry)) where
-    parse raw_ = (Cvse'AddressingNewEntry <$> (GH.parseField #avid raw_)
-                                          <*> (GH.parseField #bvid raw_)
-                                          <*> (GH.parseField #title raw_)
-                                          <*> (GH.parseField #uploader raw_)
-                                          <*> (GH.parseField #upFace raw_)
-                                          <*> (GH.parseField #copyright raw_)
-                                          <*> (GH.parseField #pubdate raw_)
-                                          <*> (GH.parseField #duration raw_)
-                                          <*> (GH.parseField #page raw_)
-                                          <*> (GH.parseField #cover raw_)
-                                          <*> (GH.parseField #desc raw_)
-                                          <*> (GH.parseField #tags raw_))
-instance (C.Marshal Cvse'AddressingNewEntry (C.Parsed Cvse'AddressingNewEntry)) where
-    marshalInto raw_ Cvse'AddressingNewEntry{..} = (do
+deriving instance (Std_.Show (C.Parsed Cvse'RecordingNewEntry))
+deriving instance (Std_.Eq (C.Parsed Cvse'RecordingNewEntry))
+instance (C.Parse Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry)) where
+    parse raw_ = (Cvse'RecordingNewEntry <$> (GH.parseField #avid raw_)
+                                         <*> (GH.parseField #bvid raw_)
+                                         <*> (GH.parseField #title raw_)
+                                         <*> (GH.parseField #uploader raw_)
+                                         <*> (GH.parseField #upFace raw_)
+                                         <*> (GH.parseField #copyright raw_)
+                                         <*> (GH.parseField #pubdate raw_)
+                                         <*> (GH.parseField #duration raw_)
+                                         <*> (GH.parseField #page raw_)
+                                         <*> (GH.parseField #cover raw_)
+                                         <*> (GH.parseField #desc raw_)
+                                         <*> (GH.parseField #tags raw_))
+instance (C.Marshal Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry)) where
+    marshalInto raw_ Cvse'RecordingNewEntry{..} = (do
         (GH.encodeField #avid avid raw_)
         (GH.encodeField #bvid bvid raw_)
         (GH.encodeField #title title raw_)
@@ -444,47 +419,47 @@ instance (C.Marshal Cvse'AddressingNewEntry (C.Parsed Cvse'AddressingNewEntry)) 
         (GH.encodeField #tags tags raw_)
         (Std_.pure ())
         )
-instance (GH.HasField "avid" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "avid" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 0)
-instance (GH.HasField "bvid" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "bvid" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 1)
-instance (GH.HasField "title" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "title" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 2)
-instance (GH.HasField "uploader" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "uploader" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 3)
-instance (GH.HasField "upFace" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "upFace" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 4)
-instance (GH.HasField "copyright" GH.Slot Cvse'AddressingNewEntry Std_.Int32) where
+instance (GH.HasField "copyright" GH.Slot Cvse'RecordingNewEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 0 0 32 0)
-instance (GH.HasField "pubdate" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "pubdate" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 5)
-instance (GH.HasField "duration" GH.Slot Cvse'AddressingNewEntry Std_.Int32) where
+instance (GH.HasField "duration" GH.Slot Cvse'RecordingNewEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 32 0 32 0)
-instance (GH.HasField "page" GH.Slot Cvse'AddressingNewEntry Std_.Int32) where
+instance (GH.HasField "page" GH.Slot Cvse'RecordingNewEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 0 1 32 0)
-instance (GH.HasField "cover" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "cover" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 6)
-instance (GH.HasField "desc" GH.Slot Cvse'AddressingNewEntry Basics.Text) where
+instance (GH.HasField "desc" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 7)
-instance (GH.HasField "tags" GH.Slot Cvse'AddressingNewEntry (R.List Basics.Text)) where
+instance (GH.HasField "tags" GH.Slot Cvse'RecordingNewEntry (R.List Basics.Text)) where
     fieldByLabel  = (GH.ptrField 8)
-data Cvse'AddressingDataEntry 
-type instance (R.ReprFor Cvse'AddressingDataEntry) = (R.Ptr (Std_.Just R.Struct))
-instance (C.HasTypeId Cvse'AddressingDataEntry) where
-    typeId  = 9429155103964698714
-instance (C.TypedStruct Cvse'AddressingDataEntry) where
-    numStructWords  = 7
-    numStructPtrs  = 3
-instance (C.Allocate Cvse'AddressingDataEntry) where
-    type AllocHint Cvse'AddressingDataEntry = ()
+data Cvse'RecordingDataEntry 
+type instance (R.ReprFor Cvse'RecordingDataEntry) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'RecordingDataEntry) where
+    typeId  = 17131781730824755557
+instance (C.TypedStruct Cvse'RecordingDataEntry) where
+    numStructWords  = 8
+    numStructPtrs  = 2
+instance (C.Allocate Cvse'RecordingDataEntry) where
+    type AllocHint Cvse'RecordingDataEntry = ()
     new _ = C.newTypedStruct
-instance (C.EstimateAlloc Cvse'AddressingDataEntry (C.Parsed Cvse'AddressingDataEntry))
-instance (C.AllocateList Cvse'AddressingDataEntry) where
-    type ListAllocHint Cvse'AddressingDataEntry = Std_.Int
+instance (C.EstimateAlloc Cvse'RecordingDataEntry (C.Parsed Cvse'RecordingDataEntry))
+instance (C.AllocateList Cvse'RecordingDataEntry) where
+    type ListAllocHint Cvse'RecordingDataEntry = Std_.Int
     newList  = C.newTypedStructList
-instance (C.EstimateListAlloc Cvse'AddressingDataEntry (C.Parsed Cvse'AddressingDataEntry))
-data instance C.Parsed Cvse'AddressingDataEntry
-    = Cvse'AddressingDataEntry 
+instance (C.EstimateListAlloc Cvse'RecordingDataEntry (C.Parsed Cvse'RecordingDataEntry))
+data instance C.Parsed Cvse'RecordingDataEntry
+    = Cvse'RecordingDataEntry 
         {avid :: (RP.Parsed Basics.Text)
         ,bvid :: (RP.Parsed Basics.Text)
         ,view :: (RP.Parsed Std_.Int64)
@@ -494,23 +469,23 @@ data instance C.Parsed Cvse'AddressingDataEntry
         ,danmaku :: (RP.Parsed Std_.Int64)
         ,reply :: (RP.Parsed Std_.Int64)
         ,share :: (RP.Parsed Std_.Int64)
-        ,date :: (RP.Parsed Cvse'DayDate)}
+        ,date :: (RP.Parsed Std_.Int64)}
     deriving(Generics.Generic)
-deriving instance (Std_.Show (C.Parsed Cvse'AddressingDataEntry))
-deriving instance (Std_.Eq (C.Parsed Cvse'AddressingDataEntry))
-instance (C.Parse Cvse'AddressingDataEntry (C.Parsed Cvse'AddressingDataEntry)) where
-    parse raw_ = (Cvse'AddressingDataEntry <$> (GH.parseField #avid raw_)
-                                           <*> (GH.parseField #bvid raw_)
-                                           <*> (GH.parseField #view raw_)
-                                           <*> (GH.parseField #favorite raw_)
-                                           <*> (GH.parseField #coin raw_)
-                                           <*> (GH.parseField #like raw_)
-                                           <*> (GH.parseField #danmaku raw_)
-                                           <*> (GH.parseField #reply raw_)
-                                           <*> (GH.parseField #share raw_)
-                                           <*> (GH.parseField #date raw_))
-instance (C.Marshal Cvse'AddressingDataEntry (C.Parsed Cvse'AddressingDataEntry)) where
-    marshalInto raw_ Cvse'AddressingDataEntry{..} = (do
+deriving instance (Std_.Show (C.Parsed Cvse'RecordingDataEntry))
+deriving instance (Std_.Eq (C.Parsed Cvse'RecordingDataEntry))
+instance (C.Parse Cvse'RecordingDataEntry (C.Parsed Cvse'RecordingDataEntry)) where
+    parse raw_ = (Cvse'RecordingDataEntry <$> (GH.parseField #avid raw_)
+                                          <*> (GH.parseField #bvid raw_)
+                                          <*> (GH.parseField #view raw_)
+                                          <*> (GH.parseField #favorite raw_)
+                                          <*> (GH.parseField #coin raw_)
+                                          <*> (GH.parseField #like raw_)
+                                          <*> (GH.parseField #danmaku raw_)
+                                          <*> (GH.parseField #reply raw_)
+                                          <*> (GH.parseField #share raw_)
+                                          <*> (GH.parseField #date raw_))
+instance (C.Marshal Cvse'RecordingDataEntry (C.Parsed Cvse'RecordingDataEntry)) where
+    marshalInto raw_ Cvse'RecordingDataEntry{..} = (do
         (GH.encodeField #avid avid raw_)
         (GH.encodeField #bvid bvid raw_)
         (GH.encodeField #view view raw_)
@@ -523,23 +498,23 @@ instance (C.Marshal Cvse'AddressingDataEntry (C.Parsed Cvse'AddressingDataEntry)
         (GH.encodeField #date date raw_)
         (Std_.pure ())
         )
-instance (GH.HasField "avid" GH.Slot Cvse'AddressingDataEntry Basics.Text) where
+instance (GH.HasField "avid" GH.Slot Cvse'RecordingDataEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 0)
-instance (GH.HasField "bvid" GH.Slot Cvse'AddressingDataEntry Basics.Text) where
+instance (GH.HasField "bvid" GH.Slot Cvse'RecordingDataEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 1)
-instance (GH.HasField "view" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "view" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 0 64 0)
-instance (GH.HasField "favorite" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "favorite" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 1 64 0)
-instance (GH.HasField "coin" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "coin" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 2 64 0)
-instance (GH.HasField "like" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "like" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 3 64 0)
-instance (GH.HasField "danmaku" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "danmaku" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 4 64 0)
-instance (GH.HasField "reply" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "reply" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 5 64 0)
-instance (GH.HasField "share" GH.Slot Cvse'AddressingDataEntry Std_.Int64) where
+instance (GH.HasField "share" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 6 64 0)
-instance (GH.HasField "date" GH.Slot Cvse'AddressingDataEntry Cvse'DayDate) where
-    fieldByLabel  = (GH.ptrField 2)
+instance (GH.HasField "date" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 7 64 0)

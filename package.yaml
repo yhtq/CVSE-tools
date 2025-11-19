@@ -19,6 +19,8 @@ dependencies:
     - co-log
     - supervisors
     - network-simple
+    - template-haskell
+    - mtl
 language: GHC2024
 default-extensions: LambdaCase,
     OverloadedStrings,
@@ -59,6 +61,7 @@ executables:
             CsvProvider,
             DatabaseProvider,
             Logger,
+            CVSEDatabase,
             Capnp.Gen.CVSEAPI.CVSE,
             Capnp.Gen.ById.Xbc35d800bb63a3ae
             
@@ -67,4 +70,5 @@ executables:
             - -rtsopts
             - -with-rtsopts=-N
             - -XDuplicateRecordFields
+            - -O2
 

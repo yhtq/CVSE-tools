@@ -12,9 +12,6 @@ import Control.Monad.Hefty (
     Eff,
     Effect,
     Emb,
-    Freer,
-    RemoveExps,
-    UnliftIO,
     State,
     interprets,
     interpret,
@@ -23,9 +20,7 @@ import Control.Monad.Hefty (
     liftIO,
     makeEffectF,
     makeEffectH,
-    nil,
     transform,
-    (!:),
     type (:>),
     type (~>),
     (&), rewrite, Ask(..)
@@ -52,7 +47,7 @@ runThrowPrint f = do
     case result of
         Right val -> pure (Just val)
         Left err -> do
-            liftIO $ putStrLn ("Error: " ++ show err)
+            liftIO $ putStrLn ("Uncatched Error: " ++ show err)
             pure Nothing
 
 handleThrow :: Applicative g => AlgHandler (Throw e) f g (Either e a)
@@ -62,7 +57,8 @@ data DatabaseIO :: Effect where
     RunDbAction :: forall a f. Action IO a -> DatabaseIO f a
 makeEffectF ''DatabaseIO
 
-runInDatabase :: forall es. (Emb IO :> es, Throw ErrMessage :> es, LogE :> es, FOEs es) => Host -> (Eff (DataBaseState ': es) ~> Eff (Catch ErrMessage ': es))
+runInDatabase :: forall es. (Emb IO :> es, Throw ErrMessage :> es, LogE :> es, FOEs es) => 
+    Host -> (Eff (DataBaseState ': es) ~> Eff (Catch ErrMessage ': es))
 runInDatabase host = reinterpretWith __handler 
         where __handler :: AlgHandler DataBaseState f (Eff (Catch ErrMessage ': es)) a 
               __handler Ask f = do
@@ -70,7 +66,6 @@ runInDatabase host = reinterpretWith __handler
                 result <- Except.catch 
                     (Right <$> f (DataBaseHandler pipe))
                     (\(e :: ErrMessage) -> do
-                        logDebug $ "Database connection error: " <> e
                         pure $ Left e)
                 safeLiftIO $ close pipe
                 case result of

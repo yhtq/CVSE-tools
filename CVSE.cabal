@@ -32,8 +32,10 @@ library
     , data-effects-core
     , heftia-effects ==0.7.*
     , mongoDB
+    , mtl
     , network-simple
     , supervisors
+    , template-haskell
     , text
     , time
     , vector
@@ -42,12 +44,12 @@ library
 executable CVSE-exe
   main-is: Main.hs
   other-modules:
-      CsvProvider, DatabaseProvider, Logger, Capnp.Gen.CVSEAPI.CVSE, Capnp.Gen.ById.Xbc35d800bb63a3ae
+      CsvProvider, DatabaseProvider, Logger, CVSEDatabase, Capnp.Gen.CVSEAPI.CVSE, Capnp.Gen.ById.Xbc35d800bb63a3ae
   hs-source-dirs:
       app, ., Capnp
   default-extensions:
       LambdaCase, OverloadedStrings, DerivingStrategies, DataKinds, TypeFamilies, BlockArguments, FunctionalDependencies, RecordWildCards, DefaultSignatures, PatternSynonyms, TemplateHaskell, PartialTypeSignatures, AllowAmbiguousTypes
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -XDuplicateRecordFields
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -XDuplicateRecordFields -O2
   build-depends:
       base
     , bytestring
@@ -57,8 +59,10 @@ executable CVSE-exe
     , data-effects-core
     , heftia-effects ==0.7.*
     , mongoDB
+    , mtl
     , network-simple
     , supervisors
+    , template-haskell
     , text
     , time
     , vector

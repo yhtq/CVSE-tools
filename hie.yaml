@@ -21,6 +21,9 @@ cradle:
     - path: "./app/Logger.hs"
       component: "CVSE:exe:CVSE-exe"
 
+    - path: "./app/CVSEDatabase.hs"
+      component: "CVSE:exe:CVSE-exe"
+
     - path: "./app/Capnp/Gen/CVSEAPI/CVSE.hs"
       component: "CVSE:exe:CVSE-exe"
 
@@ -36,6 +39,9 @@ cradle:
     - path: "././Logger.hs"
       component: "CVSE:exe:CVSE-exe"
 
+    - path: "././CVSEDatabase.hs"
+      component: "CVSE:exe:CVSE-exe"
+
     - path: "././Capnp/Gen/CVSEAPI/CVSE.hs"
       component: "CVSE:exe:CVSE-exe"
 
@@ -49,6 +55,9 @@ cradle:
       component: "CVSE:exe:CVSE-exe"
 
     - path: "./Capnp/Logger.hs"
+      component: "CVSE:exe:CVSE-exe"
+
+    - path: "./Capnp/CVSEDatabase.hs"
       component: "CVSE:exe:CVSE-exe"
 
     - path: "./Capnp/Capnp/Gen/CVSEAPI/CVSE.hs"
