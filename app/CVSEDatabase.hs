@@ -6,7 +6,7 @@ import Logger
 import qualified Data.Time.Clock as TC
 import qualified Data.Time.LocalTime as TCL
 import Data.Time.Format.ISO8601 (calendarFormat, formatShow, FormatExtension(BasicFormat))
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import DatabaseProvider
 import Data.Text (pack, Text, append)
 import Capnp.Gen.CVSEAPI.CVSE
@@ -15,6 +15,7 @@ import Capnp (Raw, Mutability(..))
 import Control.Monad.Hefty (Eff, (:>))
 import Control.Monad (join)
 import Data.List (nub)
+import Data.Time.Clock.System (SystemTime (..), utcToSystemTime, systemToUTCTime)
 
 
 
@@ -30,11 +31,12 @@ import Data.List (nub)
 uft8 :: TCL.TimeZone
 uft8 = TCL.hoursToTimeZone 8
 
-joinJust :: [Maybe a] -> [a]
-joinJust [] = []
-joinJust (x:xs) = case x of
-    Just v -> v : joinJust xs
-    Nothing -> joinJust xs
+filterJust :: [Maybe a] -> [a]
+filterJust [] = []
+filterJust (x:xs) = case x of
+    Just v -> v : filterJust xs
+    Nothing -> filterJust xs
+
 
 videoMetadataCollection :: Collection
 videoMetadataCollection = "video_metadata_collection"
@@ -42,6 +44,14 @@ videoMetadataCollection = "video_metadata_collection"
 videoStatsCollection :: Collection
 videoStatsCollection = "video_stats_collection"
 
+parseSystemTime :: Parsed Cvse'Time -> SystemTime
+parseSystemTime time = MkSystemTime time.seconds (fromIntegral time.nanoseconds)
+
+buildTime :: SystemTime -> Parsed Cvse'Time
+buildTime (MkSystemTime sec nsec) = Cvse'Time {
+        seconds = sec,
+        nanoseconds = fromIntegral nsec
+    }
 
 insertNewVideo :: Parsed Cvse'RecordingNewEntry -> Document
 insertNewVideo entry =
@@ -52,14 +62,72 @@ insertNewVideo entry =
         "uploader" =: entry.uploader,
         "up_face" =: entry.upFace,
         "copyright" =: entry.copyright,
-        "pubdate" =: entry.pubdate,
+        "pubdate" =: (systemToUTCTime . parseSystemTime) entry.pubdate,
         "duration" =: entry.duration,
         "page" =: entry.page,
         "cover" =: entry.cover,
         "desc" =: entry.desc,
         "tags" =: entry.tags,
-        "is_examined" =: False
+        "is_examined" =: entry.isExamined
+    ] 
+        ++ genRank entry.ranks ++
+    [
+        "is_republish" =: entry.isRepublish,
+        "staff" =: entry.staffInfo
     ]
+
+parseRanks :: Document -> [Parsed Cvse'Rank]
+parseRanks doc = filterJust [
+        if at "in_domestic" doc
+            then Just Cvse'Rank {
+                value = Cvse'Rank'RankValue'domestic
+            }
+            else Nothing,
+        if at "in_sv" doc
+            then Just Cvse'Rank {
+                value = Cvse'Rank'RankValue'sv
+            }
+            else Nothing,
+        if at "in_utau" doc
+            then Just Cvse'Rank {
+                value = Cvse'Rank'RankValue'utau
+            }
+            else Nothing
+    ]
+
+parseRecordingNewEntry :: Document -> Parsed Cvse'RecordingNewEntry
+parseRecordingNewEntry doc = Cvse'RecordingNewEntry {
+        bvid = at "_id" doc,
+        avid = at "avid" doc,
+        title = at "title" doc,
+        uploader = at "uploader" doc,
+        upFace = at "up_face" doc,
+        copyright = at "copyright" doc,
+        pubdate = buildTime . utcToSystemTime $ at "pubdate" doc,
+        duration = at "duration" doc,
+        page = at "page" doc,
+        cover = at "cover" doc,
+        desc = at "desc" doc,
+        tags = at "tags" doc,
+        isExamined = at "is_examined" doc,
+        ranks = parseRanks doc,
+        isRepublish = at "is_republish" doc,
+        staffInfo = at "staff" doc
+    }
+
+parseRecordingDataEntry :: Document -> Parsed Cvse'RecordingDataEntry
+parseRecordingDataEntry doc = Cvse'RecordingDataEntry {
+        bvid = at "bvid" doc,
+        avid = at "avid" doc,
+        view = at "view" doc,
+        favorite = at "favorite" doc,
+        coin = at "coin" doc,
+        like = at "like" doc,
+        share = at "share" doc,
+        danmaku = at "danmaku" doc,
+        reply = at "reply" doc,
+        date = buildTime . utcToSystemTime $ at "date" doc
+    }
 
 insertNewStats :: Parsed Cvse'RecordingDataEntry -> Document
 insertNewStats entry = 
@@ -74,7 +142,7 @@ insertNewStats entry =
         "danmaku" =: entry.danmaku,
         "reply" =: entry.reply,
         "share" =: entry.share,
-        "date" =: posixSecondsToUTCTime (fromIntegral entry.date)
+        "date" =: (systemToUTCTime . parseSystemTime) entry.date
     ]
 
 inDomesticField :: Field
@@ -112,7 +180,7 @@ genRank rs =
 updateModifyRank :: Parsed Cvse'ModifyEntry -> (Selector, Document, [UpdateOption])
 updateModifyRank entry =
     ( ["_id" =: entry.bvid]
-    , join $ joinJust [
+    , join $ filterJust [
         if entry.hasRanks
             then Just (genRank entry.ranks)
             else Nothing,
@@ -126,3 +194,33 @@ updateModifyRank entry =
     , []
     )
 
+getAllMetaInfo :: Bool -> Bool -> Selector
+getAllMetaInfo get_unexamined get_unincluded =
+    join $ filterJust [
+        if not get_unexamined
+            then Just ["is_examined" =: True]
+            else Nothing,
+        if not get_unincluded
+            -- 只选择至少有一个收录标记的视频
+            then Just [
+                "$or" =: [
+                    inDomesticField,
+                    inSVField,
+                    inUTAUField
+                ]
+            ]
+            else Nothing
+    ]
+
+lookupMetaInfoQuery :: Parsed Cvse'Index -> Selector
+lookupMetaInfoQuery index =
+    ["_id" =: index.bvid]
+
+lookupDataInfoQuery :: Parsed Cvse'Index -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
+lookupDataInfoQuery index from_date to_date =
+    [ "$and" =: [
+        ["bvid" =: index.bvid],
+        ["date" =: [ "$gte" =: (systemToUTCTime . parseSystemTime) from_date ]],
+        ["date" =: [ "$lte" =: (systemToUTCTime . parseSystemTime) to_date ]]
+      ]
+    ]

@@ -66,6 +66,7 @@ runInDatabase host = reinterpretWith __handler
                 result <- Except.catch 
                     (Right <$> f (DataBaseHandler pipe))
                     (\(e :: ErrMessage) -> do
+                        $(logDebug) $ "Database connection error: " <> e
                         pure $ Left e)
                 safeLiftIO $ close pipe
                 case result of

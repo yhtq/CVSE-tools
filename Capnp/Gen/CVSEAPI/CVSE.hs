@@ -44,21 +44,41 @@ instance (GH.Export Cvse) where
     type Server Cvse = Cvse'server_
     methodHandlerTree _ s_ = (GH.MethodHandlerTree (C.typeId @(Cvse)) [(GH.toUntypedMethodHandler ((cvse'updateModifyEntry) s_))
                                                                       ,(GH.toUntypedMethodHandler ((cvse'updateNewEntry) s_))
-                                                                      ,(GH.toUntypedMethodHandler ((cvse'updateRecordingDataEntry) s_))] [])
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'updateRecordingDataEntry) s_))
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'getAll) s_))
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'lookupMetaInfo) s_))
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'lookupDataInfo) s_))
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'lookupOneDataInfo) s_))] [])
 class (Cvse'server_ s_) where
-    {-# MINIMAL cvse'updateModifyEntry,cvse'updateNewEntry,cvse'updateRecordingDataEntry #-}
+    {-# MINIMAL cvse'updateModifyEntry,cvse'updateNewEntry,cvse'updateRecordingDataEntry,cvse'getAll,cvse'lookupMetaInfo,cvse'lookupDataInfo,cvse'lookupOneDataInfo #-}
     cvse'updateModifyEntry :: s_ -> (GH.MethodHandler Cvse'updateModifyEntry'params Cvse'updateModifyEntry'results)
     cvse'updateModifyEntry _ = GH.methodUnimplemented
     cvse'updateNewEntry :: s_ -> (GH.MethodHandler Cvse'updateNewEntry'params Cvse'updateNewEntry'results)
     cvse'updateNewEntry _ = GH.methodUnimplemented
     cvse'updateRecordingDataEntry :: s_ -> (GH.MethodHandler Cvse'updateRecordingDataEntry'params Cvse'updateRecordingDataEntry'results)
     cvse'updateRecordingDataEntry _ = GH.methodUnimplemented
+    cvse'getAll :: s_ -> (GH.MethodHandler Cvse'getAll'params Cvse'getAll'results)
+    cvse'getAll _ = GH.methodUnimplemented
+    cvse'lookupMetaInfo :: s_ -> (GH.MethodHandler Cvse'lookupMetaInfo'params Cvse'lookupMetaInfo'results)
+    cvse'lookupMetaInfo _ = GH.methodUnimplemented
+    cvse'lookupDataInfo :: s_ -> (GH.MethodHandler Cvse'lookupDataInfo'params Cvse'lookupDataInfo'results)
+    cvse'lookupDataInfo _ = GH.methodUnimplemented
+    cvse'lookupOneDataInfo :: s_ -> (GH.MethodHandler Cvse'lookupOneDataInfo'params Cvse'lookupOneDataInfo'results)
+    cvse'lookupOneDataInfo _ = GH.methodUnimplemented
 instance (GH.HasMethod "updateModifyEntry" Cvse Cvse'updateModifyEntry'params Cvse'updateModifyEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 0)
 instance (GH.HasMethod "updateNewEntry" Cvse Cvse'updateNewEntry'params Cvse'updateNewEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 1)
 instance (GH.HasMethod "updateRecordingDataEntry" Cvse Cvse'updateRecordingDataEntry'params Cvse'updateRecordingDataEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 2)
+instance (GH.HasMethod "getAll" Cvse Cvse'getAll'params Cvse'getAll'results) where
+    methodByLabel  = (GH.Method 11881061825597523281 3)
+instance (GH.HasMethod "lookupMetaInfo" Cvse Cvse'lookupMetaInfo'params Cvse'lookupMetaInfo'results) where
+    methodByLabel  = (GH.Method 11881061825597523281 4)
+instance (GH.HasMethod "lookupDataInfo" Cvse Cvse'lookupDataInfo'params Cvse'lookupDataInfo'results) where
+    methodByLabel  = (GH.Method 11881061825597523281 5)
+instance (GH.HasMethod "lookupOneDataInfo" Cvse Cvse'lookupOneDataInfo'params Cvse'lookupOneDataInfo'results) where
+    methodByLabel  = (GH.Method 11881061825597523281 6)
 data Cvse'updateModifyEntry'params 
 type instance (R.ReprFor Cvse'updateModifyEntry'params) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'updateModifyEntry'params) where
@@ -224,6 +244,306 @@ instance (C.Parse Cvse'updateRecordingDataEntry'results (C.Parsed Cvse'updateRec
     parse raw_ = (Std_.pure Cvse'updateRecordingDataEntry'results)
 instance (C.Marshal Cvse'updateRecordingDataEntry'results (C.Parsed Cvse'updateRecordingDataEntry'results)) where
     marshalInto _raw (Cvse'updateRecordingDataEntry'results) = (Std_.pure ())
+data Cvse'getAll'params 
+type instance (R.ReprFor Cvse'getAll'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'getAll'params) where
+    typeId  = 11278317511661808760
+instance (C.TypedStruct Cvse'getAll'params) where
+    numStructWords  = 1
+    numStructPtrs  = 0
+instance (C.Allocate Cvse'getAll'params) where
+    type AllocHint Cvse'getAll'params = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'getAll'params (C.Parsed Cvse'getAll'params))
+instance (C.AllocateList Cvse'getAll'params) where
+    type ListAllocHint Cvse'getAll'params = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'getAll'params (C.Parsed Cvse'getAll'params))
+data instance C.Parsed Cvse'getAll'params
+    = Cvse'getAll'params 
+        {get_unexamined :: (RP.Parsed Std_.Bool)
+        ,get_unincluded :: (RP.Parsed Std_.Bool)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'getAll'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'getAll'params))
+instance (C.Parse Cvse'getAll'params (C.Parsed Cvse'getAll'params)) where
+    parse raw_ = (Cvse'getAll'params <$> (GH.parseField #get_unexamined raw_)
+                                     <*> (GH.parseField #get_unincluded raw_))
+instance (C.Marshal Cvse'getAll'params (C.Parsed Cvse'getAll'params)) where
+    marshalInto raw_ Cvse'getAll'params{..} = (do
+        (GH.encodeField #get_unexamined get_unexamined raw_)
+        (GH.encodeField #get_unincluded get_unincluded raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "get_unexamined" GH.Slot Cvse'getAll'params Std_.Bool) where
+    fieldByLabel  = (GH.dataField 0 0 1 0)
+instance (GH.HasField "get_unincluded" GH.Slot Cvse'getAll'params Std_.Bool) where
+    fieldByLabel  = (GH.dataField 1 0 1 0)
+data Cvse'getAll'results 
+type instance (R.ReprFor Cvse'getAll'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'getAll'results) where
+    typeId  = 16122335308505648362
+instance (C.TypedStruct Cvse'getAll'results) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'getAll'results) where
+    type AllocHint Cvse'getAll'results = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'getAll'results (C.Parsed Cvse'getAll'results))
+instance (C.AllocateList Cvse'getAll'results) where
+    type ListAllocHint Cvse'getAll'results = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'getAll'results (C.Parsed Cvse'getAll'results))
+data instance C.Parsed Cvse'getAll'results
+    = Cvse'getAll'results 
+        {indices :: (RP.Parsed (R.List Cvse'Index))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'getAll'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'getAll'results))
+instance (C.Parse Cvse'getAll'results (C.Parsed Cvse'getAll'results)) where
+    parse raw_ = (Cvse'getAll'results <$> (GH.parseField #indices raw_))
+instance (C.Marshal Cvse'getAll'results (C.Parsed Cvse'getAll'results)) where
+    marshalInto raw_ Cvse'getAll'results{..} = (do
+        (GH.encodeField #indices indices raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "indices" GH.Slot Cvse'getAll'results (R.List Cvse'Index)) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'lookupMetaInfo'params 
+type instance (R.ReprFor Cvse'lookupMetaInfo'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupMetaInfo'params) where
+    typeId  = 10786361039257189953
+instance (C.TypedStruct Cvse'lookupMetaInfo'params) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupMetaInfo'params) where
+    type AllocHint Cvse'lookupMetaInfo'params = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupMetaInfo'params (C.Parsed Cvse'lookupMetaInfo'params))
+instance (C.AllocateList Cvse'lookupMetaInfo'params) where
+    type ListAllocHint Cvse'lookupMetaInfo'params = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupMetaInfo'params (C.Parsed Cvse'lookupMetaInfo'params))
+data instance C.Parsed Cvse'lookupMetaInfo'params
+    = Cvse'lookupMetaInfo'params 
+        {indices :: (RP.Parsed (R.List Cvse'Index))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupMetaInfo'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupMetaInfo'params))
+instance (C.Parse Cvse'lookupMetaInfo'params (C.Parsed Cvse'lookupMetaInfo'params)) where
+    parse raw_ = (Cvse'lookupMetaInfo'params <$> (GH.parseField #indices raw_))
+instance (C.Marshal Cvse'lookupMetaInfo'params (C.Parsed Cvse'lookupMetaInfo'params)) where
+    marshalInto raw_ Cvse'lookupMetaInfo'params{..} = (do
+        (GH.encodeField #indices indices raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "indices" GH.Slot Cvse'lookupMetaInfo'params (R.List Cvse'Index)) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'lookupMetaInfo'results 
+type instance (R.ReprFor Cvse'lookupMetaInfo'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupMetaInfo'results) where
+    typeId  = 12122321499878525690
+instance (C.TypedStruct Cvse'lookupMetaInfo'results) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupMetaInfo'results) where
+    type AllocHint Cvse'lookupMetaInfo'results = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupMetaInfo'results (C.Parsed Cvse'lookupMetaInfo'results))
+instance (C.AllocateList Cvse'lookupMetaInfo'results) where
+    type ListAllocHint Cvse'lookupMetaInfo'results = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupMetaInfo'results (C.Parsed Cvse'lookupMetaInfo'results))
+data instance C.Parsed Cvse'lookupMetaInfo'results
+    = Cvse'lookupMetaInfo'results 
+        {entries :: (RP.Parsed (R.List Cvse'RecordingNewEntry))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupMetaInfo'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupMetaInfo'results))
+instance (C.Parse Cvse'lookupMetaInfo'results (C.Parsed Cvse'lookupMetaInfo'results)) where
+    parse raw_ = (Cvse'lookupMetaInfo'results <$> (GH.parseField #entries raw_))
+instance (C.Marshal Cvse'lookupMetaInfo'results (C.Parsed Cvse'lookupMetaInfo'results)) where
+    marshalInto raw_ Cvse'lookupMetaInfo'results{..} = (do
+        (GH.encodeField #entries entries raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "entries" GH.Slot Cvse'lookupMetaInfo'results (R.List Cvse'RecordingNewEntry)) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'lookupDataInfo'params 
+type instance (R.ReprFor Cvse'lookupDataInfo'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupDataInfo'params) where
+    typeId  = 14056913260755409807
+instance (C.TypedStruct Cvse'lookupDataInfo'params) where
+    numStructWords  = 0
+    numStructPtrs  = 3
+instance (C.Allocate Cvse'lookupDataInfo'params) where
+    type AllocHint Cvse'lookupDataInfo'params = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupDataInfo'params (C.Parsed Cvse'lookupDataInfo'params))
+instance (C.AllocateList Cvse'lookupDataInfo'params) where
+    type ListAllocHint Cvse'lookupDataInfo'params = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupDataInfo'params (C.Parsed Cvse'lookupDataInfo'params))
+data instance C.Parsed Cvse'lookupDataInfo'params
+    = Cvse'lookupDataInfo'params 
+        {indices :: (RP.Parsed (R.List Cvse'Index))
+        ,from_date :: (RP.Parsed Cvse'Time)
+        ,to_date :: (RP.Parsed Cvse'Time)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupDataInfo'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupDataInfo'params))
+instance (C.Parse Cvse'lookupDataInfo'params (C.Parsed Cvse'lookupDataInfo'params)) where
+    parse raw_ = (Cvse'lookupDataInfo'params <$> (GH.parseField #indices raw_)
+                                             <*> (GH.parseField #from_date raw_)
+                                             <*> (GH.parseField #to_date raw_))
+instance (C.Marshal Cvse'lookupDataInfo'params (C.Parsed Cvse'lookupDataInfo'params)) where
+    marshalInto raw_ Cvse'lookupDataInfo'params{..} = (do
+        (GH.encodeField #indices indices raw_)
+        (GH.encodeField #from_date from_date raw_)
+        (GH.encodeField #to_date to_date raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "indices" GH.Slot Cvse'lookupDataInfo'params (R.List Cvse'Index)) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "from_date" GH.Slot Cvse'lookupDataInfo'params Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 1)
+instance (GH.HasField "to_date" GH.Slot Cvse'lookupDataInfo'params Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 2)
+data Cvse'lookupDataInfo'results 
+type instance (R.ReprFor Cvse'lookupDataInfo'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupDataInfo'results) where
+    typeId  = 10461453117351809676
+instance (C.TypedStruct Cvse'lookupDataInfo'results) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupDataInfo'results) where
+    type AllocHint Cvse'lookupDataInfo'results = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupDataInfo'results (C.Parsed Cvse'lookupDataInfo'results))
+instance (C.AllocateList Cvse'lookupDataInfo'results) where
+    type ListAllocHint Cvse'lookupDataInfo'results = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupDataInfo'results (C.Parsed Cvse'lookupDataInfo'results))
+data instance C.Parsed Cvse'lookupDataInfo'results
+    = Cvse'lookupDataInfo'results 
+        {entries :: (RP.Parsed (R.List (R.List Cvse'RecordingDataEntry)))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupDataInfo'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupDataInfo'results))
+instance (C.Parse Cvse'lookupDataInfo'results (C.Parsed Cvse'lookupDataInfo'results)) where
+    parse raw_ = (Cvse'lookupDataInfo'results <$> (GH.parseField #entries raw_))
+instance (C.Marshal Cvse'lookupDataInfo'results (C.Parsed Cvse'lookupDataInfo'results)) where
+    marshalInto raw_ Cvse'lookupDataInfo'results{..} = (do
+        (GH.encodeField #entries entries raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "entries" GH.Slot Cvse'lookupDataInfo'results (R.List (R.List Cvse'RecordingDataEntry))) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'lookupOneDataInfo'params 
+type instance (R.ReprFor Cvse'lookupOneDataInfo'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupOneDataInfo'params) where
+    typeId  = 14567435411466230623
+instance (C.TypedStruct Cvse'lookupOneDataInfo'params) where
+    numStructWords  = 0
+    numStructPtrs  = 3
+instance (C.Allocate Cvse'lookupOneDataInfo'params) where
+    type AllocHint Cvse'lookupOneDataInfo'params = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupOneDataInfo'params (C.Parsed Cvse'lookupOneDataInfo'params))
+instance (C.AllocateList Cvse'lookupOneDataInfo'params) where
+    type ListAllocHint Cvse'lookupOneDataInfo'params = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupOneDataInfo'params (C.Parsed Cvse'lookupOneDataInfo'params))
+data instance C.Parsed Cvse'lookupOneDataInfo'params
+    = Cvse'lookupOneDataInfo'params 
+        {indices :: (RP.Parsed (R.List Cvse'Index))
+        ,from_date :: (RP.Parsed Cvse'Time)
+        ,to_date :: (RP.Parsed Cvse'Time)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupOneDataInfo'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupOneDataInfo'params))
+instance (C.Parse Cvse'lookupOneDataInfo'params (C.Parsed Cvse'lookupOneDataInfo'params)) where
+    parse raw_ = (Cvse'lookupOneDataInfo'params <$> (GH.parseField #indices raw_)
+                                                <*> (GH.parseField #from_date raw_)
+                                                <*> (GH.parseField #to_date raw_))
+instance (C.Marshal Cvse'lookupOneDataInfo'params (C.Parsed Cvse'lookupOneDataInfo'params)) where
+    marshalInto raw_ Cvse'lookupOneDataInfo'params{..} = (do
+        (GH.encodeField #indices indices raw_)
+        (GH.encodeField #from_date from_date raw_)
+        (GH.encodeField #to_date to_date raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "indices" GH.Slot Cvse'lookupOneDataInfo'params (R.List Cvse'Index)) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "from_date" GH.Slot Cvse'lookupOneDataInfo'params Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 1)
+instance (GH.HasField "to_date" GH.Slot Cvse'lookupOneDataInfo'params Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 2)
+data Cvse'lookupOneDataInfo'results 
+type instance (R.ReprFor Cvse'lookupOneDataInfo'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupOneDataInfo'results) where
+    typeId  = 15015279242320443143
+instance (C.TypedStruct Cvse'lookupOneDataInfo'results) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupOneDataInfo'results) where
+    type AllocHint Cvse'lookupOneDataInfo'results = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupOneDataInfo'results (C.Parsed Cvse'lookupOneDataInfo'results))
+instance (C.AllocateList Cvse'lookupOneDataInfo'results) where
+    type ListAllocHint Cvse'lookupOneDataInfo'results = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupOneDataInfo'results (C.Parsed Cvse'lookupOneDataInfo'results))
+data instance C.Parsed Cvse'lookupOneDataInfo'results
+    = Cvse'lookupOneDataInfo'results 
+        {entries :: (RP.Parsed (R.List Cvse'RecordingDataEntry))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupOneDataInfo'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupOneDataInfo'results))
+instance (C.Parse Cvse'lookupOneDataInfo'results (C.Parsed Cvse'lookupOneDataInfo'results)) where
+    parse raw_ = (Cvse'lookupOneDataInfo'results <$> (GH.parseField #entries raw_))
+instance (C.Marshal Cvse'lookupOneDataInfo'results (C.Parsed Cvse'lookupOneDataInfo'results)) where
+    marshalInto raw_ Cvse'lookupOneDataInfo'results{..} = (do
+        (GH.encodeField #entries entries raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "entries" GH.Slot Cvse'lookupOneDataInfo'results (R.List Cvse'RecordingDataEntry)) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'Time 
+type instance (R.ReprFor Cvse'Time) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'Time) where
+    typeId  = 11966071299577555903
+instance (C.TypedStruct Cvse'Time) where
+    numStructWords  = 2
+    numStructPtrs  = 0
+instance (C.Allocate Cvse'Time) where
+    type AllocHint Cvse'Time = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'Time (C.Parsed Cvse'Time))
+instance (C.AllocateList Cvse'Time) where
+    type ListAllocHint Cvse'Time = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'Time (C.Parsed Cvse'Time))
+data instance C.Parsed Cvse'Time
+    = Cvse'Time 
+        {seconds :: (RP.Parsed Std_.Int64)
+        ,nanoseconds :: (RP.Parsed Std_.Int32)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'Time))
+deriving instance (Std_.Eq (C.Parsed Cvse'Time))
+instance (C.Parse Cvse'Time (C.Parsed Cvse'Time)) where
+    parse raw_ = (Cvse'Time <$> (GH.parseField #seconds raw_)
+                            <*> (GH.parseField #nanoseconds raw_))
+instance (C.Marshal Cvse'Time (C.Parsed Cvse'Time)) where
+    marshalInto raw_ Cvse'Time{..} = (do
+        (GH.encodeField #seconds seconds raw_)
+        (GH.encodeField #nanoseconds nanoseconds raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "seconds" GH.Slot Cvse'Time Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 0 64 0)
+instance (GH.HasField "nanoseconds" GH.Slot Cvse'Time Std_.Int32) where
+    fieldByLabel  = (GH.dataField 0 1 32 0)
 data Cvse'Rank 
 type instance (R.ReprFor Cvse'Rank) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'Rank) where
@@ -364,7 +684,7 @@ instance (C.HasTypeId Cvse'RecordingNewEntry) where
     typeId  = 13146097098386807052
 instance (C.TypedStruct Cvse'RecordingNewEntry) where
     numStructWords  = 2
-    numStructPtrs  = 9
+    numStructPtrs  = 11
 instance (C.Allocate Cvse'RecordingNewEntry) where
     type AllocHint Cvse'RecordingNewEntry = ()
     new _ = C.newTypedStruct
@@ -381,12 +701,16 @@ data instance C.Parsed Cvse'RecordingNewEntry
         ,uploader :: (RP.Parsed Basics.Text)
         ,upFace :: (RP.Parsed Basics.Text)
         ,copyright :: (RP.Parsed Std_.Int32)
-        ,pubdate :: (RP.Parsed Basics.Text)
+        ,pubdate :: (RP.Parsed Cvse'Time)
         ,duration :: (RP.Parsed Std_.Int32)
         ,page :: (RP.Parsed Std_.Int32)
         ,cover :: (RP.Parsed Basics.Text)
         ,desc :: (RP.Parsed Basics.Text)
-        ,tags :: (RP.Parsed (R.List Basics.Text))}
+        ,tags :: (RP.Parsed (R.List Basics.Text))
+        ,isExamined :: (RP.Parsed Std_.Bool)
+        ,ranks :: (RP.Parsed (R.List Cvse'Rank))
+        ,isRepublish :: (RP.Parsed Std_.Bool)
+        ,staffInfo :: (RP.Parsed Basics.Text)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'RecordingNewEntry))
 deriving instance (Std_.Eq (C.Parsed Cvse'RecordingNewEntry))
@@ -402,7 +726,11 @@ instance (C.Parse Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry)) wher
                                          <*> (GH.parseField #page raw_)
                                          <*> (GH.parseField #cover raw_)
                                          <*> (GH.parseField #desc raw_)
-                                         <*> (GH.parseField #tags raw_))
+                                         <*> (GH.parseField #tags raw_)
+                                         <*> (GH.parseField #isExamined raw_)
+                                         <*> (GH.parseField #ranks raw_)
+                                         <*> (GH.parseField #isRepublish raw_)
+                                         <*> (GH.parseField #staffInfo raw_))
 instance (C.Marshal Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry)) where
     marshalInto raw_ Cvse'RecordingNewEntry{..} = (do
         (GH.encodeField #avid avid raw_)
@@ -417,6 +745,10 @@ instance (C.Marshal Cvse'RecordingNewEntry (C.Parsed Cvse'RecordingNewEntry)) wh
         (GH.encodeField #cover cover raw_)
         (GH.encodeField #desc desc raw_)
         (GH.encodeField #tags tags raw_)
+        (GH.encodeField #isExamined isExamined raw_)
+        (GH.encodeField #ranks ranks raw_)
+        (GH.encodeField #isRepublish isRepublish raw_)
+        (GH.encodeField #staffInfo staffInfo raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "avid" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
@@ -431,7 +763,7 @@ instance (GH.HasField "upFace" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 4)
 instance (GH.HasField "copyright" GH.Slot Cvse'RecordingNewEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 0 0 32 0)
-instance (GH.HasField "pubdate" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
+instance (GH.HasField "pubdate" GH.Slot Cvse'RecordingNewEntry Cvse'Time) where
     fieldByLabel  = (GH.ptrField 5)
 instance (GH.HasField "duration" GH.Slot Cvse'RecordingNewEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 32 0 32 0)
@@ -443,13 +775,21 @@ instance (GH.HasField "desc" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 7)
 instance (GH.HasField "tags" GH.Slot Cvse'RecordingNewEntry (R.List Basics.Text)) where
     fieldByLabel  = (GH.ptrField 8)
+instance (GH.HasField "isExamined" GH.Slot Cvse'RecordingNewEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 32 1 1 0)
+instance (GH.HasField "ranks" GH.Slot Cvse'RecordingNewEntry (R.List Cvse'Rank)) where
+    fieldByLabel  = (GH.ptrField 9)
+instance (GH.HasField "isRepublish" GH.Slot Cvse'RecordingNewEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 33 1 1 0)
+instance (GH.HasField "staffInfo" GH.Slot Cvse'RecordingNewEntry Basics.Text) where
+    fieldByLabel  = (GH.ptrField 10)
 data Cvse'RecordingDataEntry 
 type instance (R.ReprFor Cvse'RecordingDataEntry) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'RecordingDataEntry) where
     typeId  = 17131781730824755557
 instance (C.TypedStruct Cvse'RecordingDataEntry) where
-    numStructWords  = 8
-    numStructPtrs  = 2
+    numStructWords  = 7
+    numStructPtrs  = 3
 instance (C.Allocate Cvse'RecordingDataEntry) where
     type AllocHint Cvse'RecordingDataEntry = ()
     new _ = C.newTypedStruct
@@ -469,7 +809,7 @@ data instance C.Parsed Cvse'RecordingDataEntry
         ,danmaku :: (RP.Parsed Std_.Int64)
         ,reply :: (RP.Parsed Std_.Int64)
         ,share :: (RP.Parsed Std_.Int64)
-        ,date :: (RP.Parsed Std_.Int64)}
+        ,date :: (RP.Parsed Cvse'Time)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'RecordingDataEntry))
 deriving instance (Std_.Eq (C.Parsed Cvse'RecordingDataEntry))
@@ -516,5 +856,40 @@ instance (GH.HasField "reply" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 5 64 0)
 instance (GH.HasField "share" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
     fieldByLabel  = (GH.dataField 0 6 64 0)
-instance (GH.HasField "date" GH.Slot Cvse'RecordingDataEntry Std_.Int64) where
-    fieldByLabel  = (GH.dataField 0 7 64 0)
+instance (GH.HasField "date" GH.Slot Cvse'RecordingDataEntry Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 2)
+data Cvse'Index 
+type instance (R.ReprFor Cvse'Index) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'Index) where
+    typeId  = 10423373514169926852
+instance (C.TypedStruct Cvse'Index) where
+    numStructWords  = 0
+    numStructPtrs  = 2
+instance (C.Allocate Cvse'Index) where
+    type AllocHint Cvse'Index = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'Index (C.Parsed Cvse'Index))
+instance (C.AllocateList Cvse'Index) where
+    type ListAllocHint Cvse'Index = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'Index (C.Parsed Cvse'Index))
+data instance C.Parsed Cvse'Index
+    = Cvse'Index 
+        {avid :: (RP.Parsed Basics.Text)
+        ,bvid :: (RP.Parsed Basics.Text)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'Index))
+deriving instance (Std_.Eq (C.Parsed Cvse'Index))
+instance (C.Parse Cvse'Index (C.Parsed Cvse'Index)) where
+    parse raw_ = (Cvse'Index <$> (GH.parseField #avid raw_)
+                             <*> (GH.parseField #bvid raw_))
+instance (C.Marshal Cvse'Index (C.Parsed Cvse'Index)) where
+    marshalInto raw_ Cvse'Index{..} = (do
+        (GH.encodeField #avid avid raw_)
+        (GH.encodeField #bvid bvid raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "avid" GH.Slot Cvse'Index Basics.Text) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "bvid" GH.Slot Cvse'Index Basics.Text) where
+    fieldByLabel  = (GH.ptrField 1)
