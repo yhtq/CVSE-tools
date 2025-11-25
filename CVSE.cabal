@@ -37,7 +37,7 @@ library
     , supervisors
     , template-haskell
     , text
-    , time
+    , time ==1.15.*
     , vector
   default-language: GHC2024
 
@@ -64,6 +64,6 @@ executable CVSE-exe
     , supervisors
     , template-haskell
     , text
-    , time
+    , time ==1.15.*
     , vector
   default-language: GHC2024

@@ -3,10 +3,12 @@
 module CVSEDatabase where
 import Database.MongoDB
 import Logger
+import Data.Time (diffUTCTime, UTCTime, LocalTime(..), addLocalTime, addGregorianMonthsClip, addGregorianMonthsRollOver, localTimeToUTC)
 import qualified Data.Time.Clock as TC
 import qualified Data.Time.LocalTime as TCL
 import Data.Time.Format.ISO8601 (calendarFormat, formatShow, FormatExtension(BasicFormat))
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
+import Data.Time.Calendar (fromGregorian, calendarWeek)
 import DatabaseProvider
 import Data.Text (pack, Text, append)
 import Capnp.Gen.CVSEAPI.CVSE
@@ -16,8 +18,45 @@ import Control.Monad.Hefty (Eff, (:>))
 import Control.Monad (join)
 import Data.List (nub)
 import Data.Time.Clock.System (SystemTime (..), utcToSystemTime, systemToUTCTime)
+import Data.Semigroup (stimes)
+import qualified Data.Time as TCL
+import Control.Monad.IO.Class (MonadIO)
 
+addLocalDurationClip :: TCL.CalendarDiffTime -> LocalTime -> LocalTime
+addLocalDurationClip (TCL.CalendarDiffTime m d) (LocalTime day t) =
+    addLocalTime d $ LocalTime (addGregorianMonthsClip m day) t
 
+addLocalDurationRollOver :: TCL.CalendarDiffTime -> LocalTime -> LocalTime
+addLocalDurationRollOver (TCL.CalendarDiffTime m d) (LocalTime day t) =
+    addLocalTime d $ LocalTime (addGregorianMonthsRollOver m day) t
+
+uft8 :: TCL.TimeZone
+uft8 = TCL.hoursToTimeZone 8
+
+getRankEndTime :: LocalTime -> Int -> UTCTime
+getRankEndTime firstEnd index =
+    let diffDays = TCL.calendarTimeDays (stimes (index - 1) calendarWeek) in
+    localTimeToUTC uft8 $ addLocalDurationRollOver diffDays firstEnd
+
+-- SV 刊第一期截止时间为 2019/05/31 0.00:00 UTC+8
+-- 第 i 期为该时间之后 i - 1 周
+svRankEndTime :: Int -> UTCTime
+svRankEndTime index =
+    let firstEnd = LocalTime (fromGregorian 2019 5 31) (TCL.TimeOfDay 0 0 0) in
+    getRankEndTime firstEnd index
+
+-- 第 i 期开始时间为第 i - 1 期截止时间
+snRankStartTime :: Int -> UTCTime
+snRankStartTime index = svRankEndTime (index - 1)
+
+mapCursorBatch :: (MonadIO m) => (Document -> a) -> Cursor -> Action m [a]
+mapCursorBatch cursor f = do
+    curs <- nextBatch cursor
+    if null curs
+        then return []
+    else do
+        rest <- mapCursorBatch cursor f
+        return (fmap f curs ++ rest)
 
 -- 数据库结构：
 -- video_metadata_collection:
@@ -28,8 +67,6 @@ import Data.Time.Clock.System (SystemTime (..), utcToSystemTime, systemToUTCTime
 --   存储视频的统计数据，如播放量、点赞数、评论数等。
 --   使用 "date" 记录采集时间（BSON data 类型），自动创建 id 字段。
 
-uft8 :: TCL.TimeZone
-uft8 = TCL.hoursToTimeZone 8
 
 filterJust :: [Maybe a] -> [a]
 filterJust [] = []
@@ -69,7 +106,7 @@ insertNewVideo entry =
         "desc" =: entry.desc,
         "tags" =: entry.tags,
         "is_examined" =: entry.isExamined
-    ] 
+    ]
         ++ genRank entry.ranks ++
     [
         "is_republish" =: entry.isRepublish,
@@ -130,7 +167,7 @@ parseRecordingDataEntry doc = Cvse'RecordingDataEntry {
     }
 
 insertNewStats :: Parsed Cvse'RecordingDataEntry -> Document
-insertNewStats entry = 
+insertNewStats entry =
     [
         "bvid" =: entry.bvid,
         "avid" =: entry.avid,
@@ -163,8 +200,8 @@ inUTAUField = "in_utau" =: True
 notInUTAUField :: Field
 notInUTAUField = "in_utau" =: False
 
-genRank :: [Parsed Cvse'Rank] -> Document  
-genRank rs = 
+genRank :: [Parsed Cvse'Rank] -> Document
+genRank rs =
     let (in_dom, in_sv, in_utau) = foldl (\(in_dom, in_sv, in_utau) rank ->
             case rank.value of
                 Cvse'Rank'RankValue'domestic -> (in_dom || True, in_sv, in_utau)
@@ -182,21 +219,32 @@ updateModifyRank entry =
     ( ["_id" =: entry.bvid]
     , join $ filterJust [
         if entry.hasRanks
-            then Just (genRank entry.ranks)
+            then Just ["$set" =: genRank entry.ranks]
             else Nothing,
         if entry.hasIsRepublish
-            then Just ["is_republish" =: entry.isRepublish]
+            then Just ["$set" =: ["is_republish" =: entry.isRepublish]]
             else Nothing,
         if entry.hasStaffInfo
-            then Just ["staff" =: entry.staffInfo]
+            then Just ["$set" =: ["staff" =: entry.staffInfo]]
+            else Nothing,
+        if entry.hasIsExamined
+            then Just ["$set" =: ["is_examined" =: entry.isExamined]]
             else Nothing
-    ] 
+    ]
     , []
     )
 
-getAllMetaInfo :: Bool -> Bool -> Selector
-getAllMetaInfo get_unexamined get_unincluded =
-    join $ filterJust [
+getFromToSelector :: Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
+getFromToSelector from_date to_date =
+    [ "$and" =: [
+        ["date" =: [ "$gte" =: (systemToUTCTime . parseSystemTime) from_date ]],
+        ["date" =: [ "$lt" =: (systemToUTCTime . parseSystemTime) to_date ]]
+      ]
+    ]
+
+getAllMetaInfo :: Bool -> Bool -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
+getAllMetaInfo get_unexamined get_unincluded from_date to_date =
+    join (filterJust [
         if not get_unexamined
             then Just ["is_examined" =: True]
             else Nothing,
@@ -210,7 +258,7 @@ getAllMetaInfo get_unexamined get_unincluded =
                 ]
             ]
             else Nothing
-    ]
+    ]) ++ getFromToSelector from_date to_date
 
 lookupMetaInfoQuery :: Parsed Cvse'Index -> Selector
 lookupMetaInfoQuery index =
@@ -218,9 +266,5 @@ lookupMetaInfoQuery index =
 
 lookupDataInfoQuery :: Parsed Cvse'Index -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
 lookupDataInfoQuery index from_date to_date =
-    [ "$and" =: [
-        ["bvid" =: index.bvid],
-        ["date" =: [ "$gte" =: (systemToUTCTime . parseSystemTime) from_date ]],
-        ["date" =: [ "$lte" =: (systemToUTCTime . parseSystemTime) to_date ]]
-      ]
-    ]
+    ("bvid" =: index.bvid) : getFromToSelector from_date to_date
+

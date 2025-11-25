@@ -10,7 +10,7 @@ dependencies:
     - heftia-effects ^>= 0.7
     - data-effects-core
     - text
-    - time
+    - time ^>= 1.15
     - vector
     - cassava
     - bytestring

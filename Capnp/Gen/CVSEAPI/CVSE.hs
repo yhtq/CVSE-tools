@@ -250,7 +250,7 @@ instance (C.HasTypeId Cvse'getAll'params) where
     typeId  = 11278317511661808760
 instance (C.TypedStruct Cvse'getAll'params) where
     numStructWords  = 1
-    numStructPtrs  = 0
+    numStructPtrs  = 2
 instance (C.Allocate Cvse'getAll'params) where
     type AllocHint Cvse'getAll'params = ()
     new _ = C.newTypedStruct
@@ -262,23 +262,33 @@ instance (C.EstimateListAlloc Cvse'getAll'params (C.Parsed Cvse'getAll'params))
 data instance C.Parsed Cvse'getAll'params
     = Cvse'getAll'params 
         {get_unexamined :: (RP.Parsed Std_.Bool)
-        ,get_unincluded :: (RP.Parsed Std_.Bool)}
+        ,get_unincluded :: (RP.Parsed Std_.Bool)
+        ,from_date :: (RP.Parsed Cvse'Time)
+        ,to_date :: (RP.Parsed Cvse'Time)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'getAll'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'getAll'params))
 instance (C.Parse Cvse'getAll'params (C.Parsed Cvse'getAll'params)) where
     parse raw_ = (Cvse'getAll'params <$> (GH.parseField #get_unexamined raw_)
-                                     <*> (GH.parseField #get_unincluded raw_))
+                                     <*> (GH.parseField #get_unincluded raw_)
+                                     <*> (GH.parseField #from_date raw_)
+                                     <*> (GH.parseField #to_date raw_))
 instance (C.Marshal Cvse'getAll'params (C.Parsed Cvse'getAll'params)) where
     marshalInto raw_ Cvse'getAll'params{..} = (do
         (GH.encodeField #get_unexamined get_unexamined raw_)
         (GH.encodeField #get_unincluded get_unincluded raw_)
+        (GH.encodeField #from_date from_date raw_)
+        (GH.encodeField #to_date to_date raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "get_unexamined" GH.Slot Cvse'getAll'params Std_.Bool) where
     fieldByLabel  = (GH.dataField 0 0 1 0)
 instance (GH.HasField "get_unincluded" GH.Slot Cvse'getAll'params Std_.Bool) where
     fieldByLabel  = (GH.dataField 1 0 1 0)
+instance (GH.HasField "from_date" GH.Slot Cvse'getAll'params Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "to_date" GH.Slot Cvse'getAll'params Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 1)
 data Cvse'getAll'results 
 type instance (R.ReprFor Cvse'getAll'results) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'getAll'results) where
@@ -632,6 +642,8 @@ data instance C.Parsed Cvse'ModifyEntry
     = Cvse'ModifyEntry 
         {avid :: (RP.Parsed Basics.Text)
         ,bvid :: (RP.Parsed Basics.Text)
+        ,hasIsExamined :: (RP.Parsed Std_.Bool)
+        ,isExamined :: (RP.Parsed Std_.Bool)
         ,hasRanks :: (RP.Parsed Std_.Bool)
         ,ranks :: (RP.Parsed (R.List Cvse'Rank))
         ,hasIsRepublish :: (RP.Parsed Std_.Bool)
@@ -644,6 +656,8 @@ deriving instance (Std_.Eq (C.Parsed Cvse'ModifyEntry))
 instance (C.Parse Cvse'ModifyEntry (C.Parsed Cvse'ModifyEntry)) where
     parse raw_ = (Cvse'ModifyEntry <$> (GH.parseField #avid raw_)
                                    <*> (GH.parseField #bvid raw_)
+                                   <*> (GH.parseField #hasIsExamined raw_)
+                                   <*> (GH.parseField #isExamined raw_)
                                    <*> (GH.parseField #hasRanks raw_)
                                    <*> (GH.parseField #ranks raw_)
                                    <*> (GH.parseField #hasIsRepublish raw_)
@@ -654,6 +668,8 @@ instance (C.Marshal Cvse'ModifyEntry (C.Parsed Cvse'ModifyEntry)) where
     marshalInto raw_ Cvse'ModifyEntry{..} = (do
         (GH.encodeField #avid avid raw_)
         (GH.encodeField #bvid bvid raw_)
+        (GH.encodeField #hasIsExamined hasIsExamined raw_)
+        (GH.encodeField #isExamined isExamined raw_)
         (GH.encodeField #hasRanks hasRanks raw_)
         (GH.encodeField #ranks ranks raw_)
         (GH.encodeField #hasIsRepublish hasIsRepublish raw_)
@@ -666,16 +682,20 @@ instance (GH.HasField "avid" GH.Slot Cvse'ModifyEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 0)
 instance (GH.HasField "bvid" GH.Slot Cvse'ModifyEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 1)
-instance (GH.HasField "hasRanks" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+instance (GH.HasField "hasIsExamined" GH.Slot Cvse'ModifyEntry Std_.Bool) where
     fieldByLabel  = (GH.dataField 0 0 1 0)
+instance (GH.HasField "isExamined" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 1 0 1 0)
+instance (GH.HasField "hasRanks" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 2 0 1 0)
 instance (GH.HasField "ranks" GH.Slot Cvse'ModifyEntry (R.List Cvse'Rank)) where
     fieldByLabel  = (GH.ptrField 2)
 instance (GH.HasField "hasIsRepublish" GH.Slot Cvse'ModifyEntry Std_.Bool) where
-    fieldByLabel  = (GH.dataField 1 0 1 0)
-instance (GH.HasField "isRepublish" GH.Slot Cvse'ModifyEntry Std_.Bool) where
-    fieldByLabel  = (GH.dataField 2 0 1 0)
-instance (GH.HasField "hasStaffInfo" GH.Slot Cvse'ModifyEntry Std_.Bool) where
     fieldByLabel  = (GH.dataField 3 0 1 0)
+instance (GH.HasField "isRepublish" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 4 0 1 0)
+instance (GH.HasField "hasStaffInfo" GH.Slot Cvse'ModifyEntry Std_.Bool) where
+    fieldByLabel  = (GH.dataField 5 0 1 0)
 instance (GH.HasField "staffInfo" GH.Slot Cvse'ModifyEntry Basics.Text) where
     fieldByLabel  = (GH.ptrField 3)
 data Cvse'RecordingNewEntry 

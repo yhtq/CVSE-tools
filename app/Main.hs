@@ -69,21 +69,21 @@ mainWrapper server action = do
 instance Cvse'server_ MyServer where
    cvse'updateModifyEntry server = handleParsed (
       \param -> mainWrapper server $ do
-            $(logInfo) $ "Received ModifyRankEntry update from client: " <> server.peer <> "with " <> show (length param.entries) <> " entries."
+            $(logInfo) $ "Received ModifyRankEntry update from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
             runDbAction $
                updateMany videoMetadataCollection (fmap updateModifyRank param.entries)
             return def
       )
    cvse'updateNewEntry server = handleParsed (
       \param -> mainWrapper server $ do
-         $(logInfo) $ "Received RecordingNewEntry from client: " <> server.peer <> "with " <> show (length param.entries) <> " entries."
+         $(logInfo) $ "Received RecordingNewEntry from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
          runDbAction $ do
-            insertMany_ videoMetadataCollection (fmap insertNewVideo param.entries)
+            insertAll_ videoMetadataCollection (fmap insertNewVideo param.entries)
          return def
       )
    cvse'updateRecordingDataEntry server = handleParsed (
       \param -> mainWrapper server $ do
-         $(logInfo) $ "Received RecordingDataEntry update from client: " <> server.peer <> "with " <> show (length param.entries) <> " entries."
+         $(logInfo) $ "Received RecordingDataEntry update from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
          runDbAction $ do
             insertMany_ videoStatsCollection (fmap insertNewStats param.entries)
          return def
@@ -93,13 +93,15 @@ instance Cvse'server_ MyServer where
          $(logInfo) $ "Received getAll request from client: " 
             <> server.peer <> " with get_unexamined=" <> show param.get_unexamined 
             <> " and get_unincluded=" <> show param.get_unincluded
-         docs <- runDbAction $ do
-            let baseQuery = getAllMetaInfo param.get_unexamined param.get_unincluded
-            find (select baseQuery videoMetadataCollection) >>= rest
-         let indices = fmap (\doc -> Cvse'Index {
-               bvid = at "_id" doc,
-               avid = at "avid" doc
-            }) docs
+         indices <- runDbAction $ do
+            let baseQuery = getAllMetaInfo 
+                     param.get_unexamined param.get_unincluded 
+                     param.from_date param.to_date
+            find (select baseQuery videoMetadataCollection) 
+               >>= mapCursorBatch (\doc -> Cvse'Index {
+                  bvid = at "_id" doc,
+                  avid = at "avid" doc
+               })
          $(logInfo) $ "getAll found " <> show (length indices) <> " entries."
          return (Cvse'getAll'results { indices = indices })
       )
@@ -118,11 +120,10 @@ instance Cvse'server_ MyServer where
    cvse'lookupDataInfo server = handleParsed (
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received lookupDataInfo request from client: " <> server.peer <> " with " <> show (length param.indices) <> " indices."
-         docs <- mapM (\index -> runDbAction $
+         entries <- mapM (\index -> runDbAction $
                   find (select (lookupDataInfoQuery index param.from_date param.to_date) videoStatsCollection)
-                  >>= rest
+                  >>= mapCursorBatch parseRecordingDataEntry
                ) param.indices
-         let entries = fmap (fmap parseRecordingDataEntry) docs
          return (Cvse'lookupDataInfo'results { entries = entries })
          )
 
@@ -138,7 +139,7 @@ instance Cvse'server_ MyServer where
          return (Cvse'lookupOneDataInfo'results { entries = docs })
       )
 
-serverAddr = "localhost"
+serverAddr = "0.0.0.0"
 
 serverPort  = "8663"
 
