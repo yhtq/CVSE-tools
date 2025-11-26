@@ -20,7 +20,7 @@ import Data.List (nub)
 import Data.Time.Clock.System (SystemTime (..), utcToSystemTime, systemToUTCTime)
 import Data.Semigroup (stimes)
 import qualified Data.Time as TCL
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 
 addLocalDurationClip :: TCL.CalendarDiffTime -> LocalTime -> LocalTime
 addLocalDurationClip (TCL.CalendarDiffTime m d) (LocalTime day t) =
@@ -50,12 +50,12 @@ snRankStartTime :: Int -> UTCTime
 snRankStartTime index = svRankEndTime (index - 1)
 
 mapCursorBatch :: (MonadIO m) => (Document -> a) -> Cursor -> Action m [a]
-mapCursorBatch cursor f = do
+mapCursorBatch f cursor = do
     curs <- nextBatch cursor
     if null curs
         then return []
     else do
-        rest <- mapCursorBatch cursor f
+        rest <- mapCursorBatch f cursor
         return (fmap f curs ++ rest)
 
 -- 数据库结构：
@@ -234,12 +234,13 @@ updateModifyRank entry =
     , []
     )
 
-getFromToSelector :: Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
-getFromToSelector from_date to_date =
-    [ "$and" =: [
-        ["date" =: [ "$gte" =: (systemToUTCTime . parseSystemTime) from_date ]],
-        ["date" =: [ "$lt" =: (systemToUTCTime . parseSystemTime) to_date ]]
-      ]
+getFromToSelector :: Text -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
+getFromToSelector dateField from_date to_date =
+    [ 
+        dateField =: 
+            [ "$gte" =: (systemToUTCTime . parseSystemTime) from_date, 
+               "$lt" =: (systemToUTCTime . parseSystemTime) to_date 
+            ]
     ]
 
 getAllMetaInfo :: Bool -> Bool -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
@@ -252,13 +253,14 @@ getAllMetaInfo get_unexamined get_unincluded from_date to_date =
             -- 只选择至少有一个收录标记的视频
             then Just [
                 "$or" =: [
-                    inDomesticField,
-                    inSVField,
-                    inUTAUField
+                    [inDomesticField],
+                    [inSVField],
+                    [inUTAUField],
+                    ["is_examined" =: False]
                 ]
             ]
             else Nothing
-    ]) ++ getFromToSelector from_date to_date
+    ]) ++ getFromToSelector "pubdate" from_date to_date
 
 lookupMetaInfoQuery :: Parsed Cvse'Index -> Selector
 lookupMetaInfoQuery index =
@@ -266,5 +268,5 @@ lookupMetaInfoQuery index =
 
 lookupDataInfoQuery :: Parsed Cvse'Index -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
 lookupDataInfoQuery index from_date to_date =
-    ("bvid" =: index.bvid) : getFromToSelector from_date to_date
+    ("bvid" =: index.bvid) : getFromToSelector "date" from_date to_date
 

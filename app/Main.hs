@@ -48,7 +48,7 @@ mainHandler :: Host -> Database -> Eff '[
 mainHandler host database  = runEff .
          runThrow .
          runCatch .
-         defaultLoggerHandler logFilePath Debug .
+         defaultLoggerHandler logFilePath (Just Debug) .
          runCatch .
          runInDatabase host .
          runInDatabaseTable database  .
@@ -92,16 +92,25 @@ instance Cvse'server_ MyServer where
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received getAll request from client: " 
             <> server.peer <> " with get_unexamined=" <> show param.get_unexamined 
-            <> " and get_unincluded=" <> show param.get_unincluded
-         indices <- runDbAction $ do
-            let baseQuery = getAllMetaInfo 
-                     param.get_unexamined param.get_unincluded 
-                     param.from_date param.to_date
-            find (select baseQuery videoMetadataCollection) 
-               >>= mapCursorBatch (\doc -> Cvse'Index {
-                  bvid = at "_id" doc,
-                  avid = at "avid" doc
-               })
+            <> ", get_unincluded=" <> show param.get_unincluded
+            <> ", from_date=" <> show param.from_date
+            <> ", to_date=" <> show param.to_date <> "." 
+         let baseQuery = getAllMetaInfo 
+                  param.get_unexamined param.get_unincluded 
+                  param.from_date param.to_date
+         $(logDebug) $ "Base query: " <> show baseQuery
+         indices_maybe  <- runDbAction $ do
+            find ((select baseQuery videoMetadataCollection) {project = ["_id" =: 1, "avid" =: 1]}) 
+               >>= rest >>= mapM (\doc -> return (doc !? "_id", doc !? "avid", doc))
+         indices <- mapM (\(mbBvid, mbAvid, doc) -> case (mbBvid, mbAvid) of
+               (Just (String bvid), Just (String avid)) -> do
+                  $(logInfo) $ "Found index: bvid=" <> bvid <> ", avid=" <> avid
+                  return Cvse'Index {
+                     bvid = bvid,
+                     avid = avid 
+                  }
+               _ -> throw $ "Malformed document found in video_metadata_collection: " <> show doc
+            ) indices_maybe
          $(logInfo) $ "getAll found " <> show (length indices) <> " entries."
          return (Cvse'getAll'results { indices = indices })
       )

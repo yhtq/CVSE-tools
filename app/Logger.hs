@@ -33,6 +33,7 @@ import GHC.Stack (callStack, withFrozenCallStack)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Data.Maybe (fromMaybe)
+import System.Environment (lookupEnv)
 
 type ErrMessage = Text
 type ExceptionE = Throw ErrMessage
@@ -109,9 +110,20 @@ outputLoggerToStdout :: (Emb IO :> es, ExceptionE :> es) => Eff (Log Text ': es)
 outputLoggerToStdout = runLogAction logTextStdout
 {-# INLINE outputLoggerToStdout #-}
 
-defaultLoggerHandler :: (Emb IO :> es, ExceptionE :> es, FOEs es) => FilePath -> Severity -> Eff (Log Message ': es) a -> Eff (Except.Catch ErrMessage : es) a
-defaultLoggerHandler fp serve = 
-    outputLoggerToFile fp . fmtLogger . setLoggerLevel serve
+-- 如果没有传入 severity，则使用环境变量 CVSE_LOG_SEVERITY 指定的日志等级，默认使用 Info 级别
+defaultLoggerHandler :: (Emb IO :> es, ExceptionE :> es, FOEs es) => FilePath -> Maybe Severity -> Eff (Log Message ': es) a -> Eff (Except.Catch ErrMessage : es) a
+defaultLoggerHandler fp serve f = do
+    serve_level <- case serve of
+        Just level -> return level
+        Nothing -> do
+            env_level <- safeLiftIO $ lookupEnv "CVSE_LOG_SEVERITY"
+            case env_level of
+                Just "DEBUG" -> return Debug
+                Just "INFO" -> return Info
+                Just "WARN" -> return Warning
+                Just "ERROR" -> return Error
+                _ -> return Info
+    outputLoggerToFile fp . fmtLogger . setLoggerLevel serve_level $ f
 {-# INLINE defaultLoggerHandler #-}
 
 -- defaultLoggerHandler' :: (Emb IO :> es, ExceptionE :> es, FOEs es) => FilePath -> Severity -> Eff (Log Message ': es) a -> Eff es a
