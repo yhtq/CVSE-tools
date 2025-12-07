@@ -25,12 +25,16 @@ import Control.Monad.Hefty (
     type (~>),
     (&), rewrite, Ask(..)
  )
-import Database.MongoDB (Pipe, Database, Action, master, access, connect, close, Host)
+import Database.MongoDB (Pipe, Database, Action, master, access, connect, close, Host, Document)
 import Control.Monad.Hefty.Reader (runAsk, ask)
 import Data.Text (Text, pack)
 import Control.Monad.Hefty.Except (Catch, runCatch)
 import qualified Control.Monad.Hefty.Except as Except
 import Logger 
+import Database.MongoDB.Query (Cursor)
+import Database.MongoDB (isCursorClosed)
+import Database.MongoDB.Query (next)
+import Control.Monad.IO.Class (MonadIO)
 
 
 newtype DataBaseHandler = DataBaseHandler Pipe

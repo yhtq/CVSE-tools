@@ -26,6 +26,7 @@ import Capnp.Gen.CVSEAPI.CVSE
 import CVSEDatabase
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
+import GHC.Base (when)
 
 logFilePath :: FilePath
 logFilePath = "cvse_service.log"
@@ -77,8 +78,20 @@ instance Cvse'server_ MyServer where
    cvse'updateNewEntry server = handleParsed (
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received RecordingNewEntry from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
-         runDbAction $ do
-            insertAll_ videoMetadataCollection (fmap insertNewVideo param.entries)
+         writeResult <- runDbAction $ do
+            let insertFun = if param.replace
+                  then \docs -> do
+                     writeResult <- updateMany videoMetadataCollection $ fmap (
+                           \doc ->
+                              (["_id" =: (at "_id" doc :: Text)], doc, [Upsert])
+                        ) docs
+                     return $ show writeResult
+                  else fmap show . insertAll videoMetadataCollection 
+            insertFun (fmap insertNewVideo param.entries)
+         if param.replace then
+            $(logDebug) $ "Database upsert result: " <> show writeResult
+         else
+            $(logDebug) $ "Database insert result: " <> show writeResult
          return def
       )
    cvse'updateRecordingDataEntry server = handleParsed (
@@ -90,24 +103,24 @@ instance Cvse'server_ MyServer where
       )
    cvse'getAll server = handleParsed (
       \param -> mainWrapper server $ do
-         $(logInfo) $ "Received getAll request from client: " 
-            <> server.peer <> " with get_unexamined=" <> show param.get_unexamined 
+         $(logInfo) $ "Received getAll request from client: "
+            <> server.peer <> " with get_unexamined=" <> show param.get_unexamined
             <> ", get_unincluded=" <> show param.get_unincluded
             <> ", from_date=" <> show param.from_date
-            <> ", to_date=" <> show param.to_date <> "." 
-         let baseQuery = getAllMetaInfo 
-                  param.get_unexamined param.get_unincluded 
+            <> ", to_date=" <> show param.to_date <> "."
+         let baseQuery = getAllMetaInfo
+                  param.get_unexamined param.get_unincluded
                   param.from_date param.to_date
          $(logDebug) $ "Base query: " <> show baseQuery
          indices_maybe  <- runDbAction $ do
-            find ((select baseQuery videoMetadataCollection) {project = ["_id" =: 1, "avid" =: 1]}) 
+            find ((select baseQuery videoMetadataCollection) {project = ["_id" =: 1, "avid" =: 1]})
                >>= rest >>= mapM (\doc -> return (doc !? "_id", doc !? "avid", doc))
          indices <- mapM (\(mbBvid, mbAvid, doc) -> case (mbBvid, mbAvid) of
                (Just (String bvid), Just (String avid)) -> do
-                  $(logInfo) $ "Found index: bvid=" <> bvid <> ", avid=" <> avid
+                  $(logDebug) $ "Found index: bvid=" <> bvid <> ", avid=" <> avid
                   return Cvse'Index {
                      bvid = bvid,
-                     avid = avid 
+                     avid = avid
                   }
                _ -> throw $ "Malformed document found in video_metadata_collection: " <> show doc
             ) indices_maybe
@@ -146,6 +159,44 @@ instance Cvse'server_ MyServer where
                   Nothing -> throw $ "No data found for video with bvid " <> index.bvid <> " and avid " <> index.avid <> " in the specified date range."
                ) param.indices
          return (Cvse'lookupOneDataInfo'results { entries = docs })
+      )
+   
+   cvse'reCalculateRankings server = handleParsed (
+      \param -> mainWrapper server $ do
+         $(logInfo) 
+            $ "Received reCalculateRankings request from client: " <> server.peer 
+            <> " for rank " <> show param.rank <> ", index " <> show param.index 
+            <> ", contain_unexamined=" <> show param.contain_unexamined
+            <> ", lock=" <> show param.lock <> "."
+         let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
+         isLock <- runDbAction $ checkLock collectionName
+         when isLock $
+            throw $ "Collection " <> collectionName <> " is LOCKED. Aborting ranking calculation."
+         runDbAction $ dropCollection collectionName
+         let (period1, period2) = genPeriod param.rank (fromIntegral param.index)
+         $(logInfo) $ "Calculating rankings for period from " <> show period1 <> " to " <> show period2 <> "."
+         let selector = genRankingQuery param.rank (fromIntegral param.index) param.contain_unexamined
+         $(logDebug) $ "Ranking query selector: " <> show selector
+         runDbAction $ do
+            cursor <- find ((select selector videoMetadataCollection) {project = ["_id" =: 1]})  
+            docs <- rest cursor
+            let bvids = map (at "_id") docs
+            calculateVideoPoints bvids collectionName period1 period2
+         when param.lock $ do
+            runDbAction $ lockCollection collectionName
+            $(logInfo) $ "Locked collection " <> collectionName <> " after ranking calculation."
+         return (Cvse'reCalculateRankings'results { })
+      )
+   
+   cvse'getAllRankingInfo server = handleParsed (
+      \param -> mainWrapper server $ do
+         $(logInfo) $ "Received getAllRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
+         let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
+         entries <- runDbAction $ do
+            find (select [] collectionName) >>= mapCursorBatch parseRankingInfoEntry
+         let true_entries = filterJust entries 
+         $(logInfo) $ "getAllRankingInfo found " <> show (length true_entries) <> " entries."
+         return (Cvse'getAllRankingInfo'results { entries = true_entries })
       )
 
 serverAddr = "0.0.0.0"

@@ -8,6 +8,7 @@
             "type": "shell",
             "command": [
                 "stack build --flag mongoDB:-_old-network && ",
+                "ssh CVSE \"kill_server\" ; ",
                 "scp .stack-work/dist/x86_64-linux/ghc-9.12.2/build/CVSE-exe/CVSE-exe CVSE:~/CVSE_EXE/"
             ],
             "problemMatcher": [],
@@ -20,7 +21,9 @@
             "label": "Run on remote",
             "type": "shell",
             "dependsOn": "Build and transmission",
-            "command": "ssh CVSE '~/CVSE_EXE/CVSE-exe'",
+            "command": [
+                "ssh CVSE \"kill_server; run_server_back\""
+            ],
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
