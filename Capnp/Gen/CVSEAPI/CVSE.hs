@@ -50,9 +50,11 @@ instance (GH.Export Cvse) where
                                                                       ,(GH.toUntypedMethodHandler ((cvse'lookupDataInfo) s_))
                                                                       ,(GH.toUntypedMethodHandler ((cvse'lookupOneDataInfo) s_))
                                                                       ,(GH.toUntypedMethodHandler ((cvse'reCalculateRankings) s_))
-                                                                      ,(GH.toUntypedMethodHandler ((cvse'getAllRankingInfo) s_))] [])
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'getAllRankingInfo) s_))
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'lookupRankingInfo) s_))
+                                                                      ,(GH.toUntypedMethodHandler ((cvse'lookupRankingMetaInfo) s_))] [])
 class (Cvse'server_ s_) where
-    {-# MINIMAL cvse'updateModifyEntry,cvse'updateNewEntry,cvse'updateRecordingDataEntry,cvse'getAll,cvse'lookupMetaInfo,cvse'lookupDataInfo,cvse'lookupOneDataInfo,cvse'reCalculateRankings,cvse'getAllRankingInfo #-}
+    {-# MINIMAL cvse'updateModifyEntry,cvse'updateNewEntry,cvse'updateRecordingDataEntry,cvse'getAll,cvse'lookupMetaInfo,cvse'lookupDataInfo,cvse'lookupOneDataInfo,cvse'reCalculateRankings,cvse'getAllRankingInfo,cvse'lookupRankingInfo,cvse'lookupRankingMetaInfo #-}
     cvse'updateModifyEntry :: s_ -> (GH.MethodHandler Cvse'updateModifyEntry'params Cvse'updateModifyEntry'results)
     cvse'updateModifyEntry _ = GH.methodUnimplemented
     cvse'updateNewEntry :: s_ -> (GH.MethodHandler Cvse'updateNewEntry'params Cvse'updateNewEntry'results)
@@ -71,6 +73,10 @@ class (Cvse'server_ s_) where
     cvse'reCalculateRankings _ = GH.methodUnimplemented
     cvse'getAllRankingInfo :: s_ -> (GH.MethodHandler Cvse'getAllRankingInfo'params Cvse'getAllRankingInfo'results)
     cvse'getAllRankingInfo _ = GH.methodUnimplemented
+    cvse'lookupRankingInfo :: s_ -> (GH.MethodHandler Cvse'lookupRankingInfo'params Cvse'lookupRankingInfo'results)
+    cvse'lookupRankingInfo _ = GH.methodUnimplemented
+    cvse'lookupRankingMetaInfo :: s_ -> (GH.MethodHandler Cvse'lookupRankingMetaInfo'params Cvse'lookupRankingMetaInfo'results)
+    cvse'lookupRankingMetaInfo _ = GH.methodUnimplemented
 instance (GH.HasMethod "updateModifyEntry" Cvse Cvse'updateModifyEntry'params Cvse'updateModifyEntry'results) where
     methodByLabel  = (GH.Method 11881061825597523281 0)
 instance (GH.HasMethod "updateNewEntry" Cvse Cvse'updateNewEntry'params Cvse'updateNewEntry'results) where
@@ -89,6 +95,10 @@ instance (GH.HasMethod "reCalculateRankings" Cvse Cvse'reCalculateRankings'param
     methodByLabel  = (GH.Method 11881061825597523281 7)
 instance (GH.HasMethod "getAllRankingInfo" Cvse Cvse'getAllRankingInfo'params Cvse'getAllRankingInfo'results) where
     methodByLabel  = (GH.Method 11881061825597523281 8)
+instance (GH.HasMethod "lookupRankingInfo" Cvse Cvse'lookupRankingInfo'params Cvse'lookupRankingInfo'results) where
+    methodByLabel  = (GH.Method 11881061825597523281 9)
+instance (GH.HasMethod "lookupRankingMetaInfo" Cvse Cvse'lookupRankingMetaInfo'params Cvse'lookupRankingMetaInfo'results) where
+    methodByLabel  = (GH.Method 11881061825597523281 10)
 data Cvse'updateModifyEntry'params 
 type instance (R.ReprFor Cvse'updateModifyEntry'params) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'updateModifyEntry'params) where
@@ -609,7 +619,7 @@ type instance (R.ReprFor Cvse'getAllRankingInfo'params) = (R.Ptr (Std_.Just R.St
 instance (C.HasTypeId Cvse'getAllRankingInfo'params) where
     typeId  = 10865088774995854283
 instance (C.TypedStruct Cvse'getAllRankingInfo'params) where
-    numStructWords  = 1
+    numStructWords  = 2
     numStructPtrs  = 1
 instance (C.Allocate Cvse'getAllRankingInfo'params) where
     type AllocHint Cvse'getAllRankingInfo'params = ()
@@ -623,19 +633,25 @@ data instance C.Parsed Cvse'getAllRankingInfo'params
     = Cvse'getAllRankingInfo'params 
         {rank :: (RP.Parsed Cvse'Rank)
         ,index :: (RP.Parsed Std_.Int32)
-        ,contain_unexamined :: (RP.Parsed Std_.Bool)}
+        ,contain_unexamined :: (RP.Parsed Std_.Bool)
+        ,from_rank :: (RP.Parsed Std_.Int32)
+        ,to_rank :: (RP.Parsed Std_.Int32)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'getAllRankingInfo'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'getAllRankingInfo'params))
 instance (C.Parse Cvse'getAllRankingInfo'params (C.Parsed Cvse'getAllRankingInfo'params)) where
     parse raw_ = (Cvse'getAllRankingInfo'params <$> (GH.parseField #rank raw_)
                                                 <*> (GH.parseField #index raw_)
-                                                <*> (GH.parseField #contain_unexamined raw_))
+                                                <*> (GH.parseField #contain_unexamined raw_)
+                                                <*> (GH.parseField #from_rank raw_)
+                                                <*> (GH.parseField #to_rank raw_))
 instance (C.Marshal Cvse'getAllRankingInfo'params (C.Parsed Cvse'getAllRankingInfo'params)) where
     marshalInto raw_ Cvse'getAllRankingInfo'params{..} = (do
         (GH.encodeField #rank rank raw_)
         (GH.encodeField #index index raw_)
         (GH.encodeField #contain_unexamined contain_unexamined raw_)
+        (GH.encodeField #from_rank from_rank raw_)
+        (GH.encodeField #to_rank to_rank raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "rank" GH.Slot Cvse'getAllRankingInfo'params Cvse'Rank) where
@@ -644,6 +660,10 @@ instance (GH.HasField "index" GH.Slot Cvse'getAllRankingInfo'params Std_.Int32) 
     fieldByLabel  = (GH.dataField 0 0 32 0)
 instance (GH.HasField "contain_unexamined" GH.Slot Cvse'getAllRankingInfo'params Std_.Bool) where
     fieldByLabel  = (GH.dataField 32 0 1 0)
+instance (GH.HasField "from_rank" GH.Slot Cvse'getAllRankingInfo'params Std_.Int32) where
+    fieldByLabel  = (GH.dataField 0 1 32 0)
+instance (GH.HasField "to_rank" GH.Slot Cvse'getAllRankingInfo'params Std_.Int32) where
+    fieldByLabel  = (GH.dataField 32 1 32 0)
 data Cvse'getAllRankingInfo'results 
 type instance (R.ReprFor Cvse'getAllRankingInfo'results) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'getAllRankingInfo'results) where
@@ -661,7 +681,7 @@ instance (C.AllocateList Cvse'getAllRankingInfo'results) where
 instance (C.EstimateListAlloc Cvse'getAllRankingInfo'results (C.Parsed Cvse'getAllRankingInfo'results))
 data instance C.Parsed Cvse'getAllRankingInfo'results
     = Cvse'getAllRankingInfo'results 
-        {entries :: (RP.Parsed (R.List Cvse'RankingInfoEntry))}
+        {entries :: (RP.Parsed (R.List Cvse'Index))}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'getAllRankingInfo'results))
 deriving instance (Std_.Eq (C.Parsed Cvse'getAllRankingInfo'results))
@@ -672,7 +692,152 @@ instance (C.Marshal Cvse'getAllRankingInfo'results (C.Parsed Cvse'getAllRankingI
         (GH.encodeField #entries entries raw_)
         (Std_.pure ())
         )
-instance (GH.HasField "entries" GH.Slot Cvse'getAllRankingInfo'results (R.List Cvse'RankingInfoEntry)) where
+instance (GH.HasField "entries" GH.Slot Cvse'getAllRankingInfo'results (R.List Cvse'Index)) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'lookupRankingInfo'params 
+type instance (R.ReprFor Cvse'lookupRankingInfo'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupRankingInfo'params) where
+    typeId  = 17999448988275422192
+instance (C.TypedStruct Cvse'lookupRankingInfo'params) where
+    numStructWords  = 1
+    numStructPtrs  = 2
+instance (C.Allocate Cvse'lookupRankingInfo'params) where
+    type AllocHint Cvse'lookupRankingInfo'params = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupRankingInfo'params (C.Parsed Cvse'lookupRankingInfo'params))
+instance (C.AllocateList Cvse'lookupRankingInfo'params) where
+    type ListAllocHint Cvse'lookupRankingInfo'params = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupRankingInfo'params (C.Parsed Cvse'lookupRankingInfo'params))
+data instance C.Parsed Cvse'lookupRankingInfo'params
+    = Cvse'lookupRankingInfo'params 
+        {rank :: (RP.Parsed Cvse'Rank)
+        ,index :: (RP.Parsed Std_.Int32)
+        ,contain_unexamined :: (RP.Parsed Std_.Bool)
+        ,indices :: (RP.Parsed (R.List Cvse'Index))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupRankingInfo'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupRankingInfo'params))
+instance (C.Parse Cvse'lookupRankingInfo'params (C.Parsed Cvse'lookupRankingInfo'params)) where
+    parse raw_ = (Cvse'lookupRankingInfo'params <$> (GH.parseField #rank raw_)
+                                                <*> (GH.parseField #index raw_)
+                                                <*> (GH.parseField #contain_unexamined raw_)
+                                                <*> (GH.parseField #indices raw_))
+instance (C.Marshal Cvse'lookupRankingInfo'params (C.Parsed Cvse'lookupRankingInfo'params)) where
+    marshalInto raw_ Cvse'lookupRankingInfo'params{..} = (do
+        (GH.encodeField #rank rank raw_)
+        (GH.encodeField #index index raw_)
+        (GH.encodeField #contain_unexamined contain_unexamined raw_)
+        (GH.encodeField #indices indices raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "rank" GH.Slot Cvse'lookupRankingInfo'params Cvse'Rank) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "index" GH.Slot Cvse'lookupRankingInfo'params Std_.Int32) where
+    fieldByLabel  = (GH.dataField 0 0 32 0)
+instance (GH.HasField "contain_unexamined" GH.Slot Cvse'lookupRankingInfo'params Std_.Bool) where
+    fieldByLabel  = (GH.dataField 32 0 1 0)
+instance (GH.HasField "indices" GH.Slot Cvse'lookupRankingInfo'params (R.List Cvse'Index)) where
+    fieldByLabel  = (GH.ptrField 1)
+data Cvse'lookupRankingInfo'results 
+type instance (R.ReprFor Cvse'lookupRankingInfo'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupRankingInfo'results) where
+    typeId  = 10159314557433991385
+instance (C.TypedStruct Cvse'lookupRankingInfo'results) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupRankingInfo'results) where
+    type AllocHint Cvse'lookupRankingInfo'results = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupRankingInfo'results (C.Parsed Cvse'lookupRankingInfo'results))
+instance (C.AllocateList Cvse'lookupRankingInfo'results) where
+    type ListAllocHint Cvse'lookupRankingInfo'results = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupRankingInfo'results (C.Parsed Cvse'lookupRankingInfo'results))
+data instance C.Parsed Cvse'lookupRankingInfo'results
+    = Cvse'lookupRankingInfo'results 
+        {entries :: (RP.Parsed (R.List Cvse'RankingInfoEntry))}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupRankingInfo'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupRankingInfo'results))
+instance (C.Parse Cvse'lookupRankingInfo'results (C.Parsed Cvse'lookupRankingInfo'results)) where
+    parse raw_ = (Cvse'lookupRankingInfo'results <$> (GH.parseField #entries raw_))
+instance (C.Marshal Cvse'lookupRankingInfo'results (C.Parsed Cvse'lookupRankingInfo'results)) where
+    marshalInto raw_ Cvse'lookupRankingInfo'results{..} = (do
+        (GH.encodeField #entries entries raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "entries" GH.Slot Cvse'lookupRankingInfo'results (R.List Cvse'RankingInfoEntry)) where
+    fieldByLabel  = (GH.ptrField 0)
+data Cvse'lookupRankingMetaInfo'params 
+type instance (R.ReprFor Cvse'lookupRankingMetaInfo'params) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupRankingMetaInfo'params) where
+    typeId  = 17456130271397784918
+instance (C.TypedStruct Cvse'lookupRankingMetaInfo'params) where
+    numStructWords  = 1
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupRankingMetaInfo'params) where
+    type AllocHint Cvse'lookupRankingMetaInfo'params = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupRankingMetaInfo'params (C.Parsed Cvse'lookupRankingMetaInfo'params))
+instance (C.AllocateList Cvse'lookupRankingMetaInfo'params) where
+    type ListAllocHint Cvse'lookupRankingMetaInfo'params = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupRankingMetaInfo'params (C.Parsed Cvse'lookupRankingMetaInfo'params))
+data instance C.Parsed Cvse'lookupRankingMetaInfo'params
+    = Cvse'lookupRankingMetaInfo'params 
+        {rank :: (RP.Parsed Cvse'Rank)
+        ,index :: (RP.Parsed Std_.Int32)
+        ,contain_unexamined :: (RP.Parsed Std_.Bool)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupRankingMetaInfo'params))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupRankingMetaInfo'params))
+instance (C.Parse Cvse'lookupRankingMetaInfo'params (C.Parsed Cvse'lookupRankingMetaInfo'params)) where
+    parse raw_ = (Cvse'lookupRankingMetaInfo'params <$> (GH.parseField #rank raw_)
+                                                    <*> (GH.parseField #index raw_)
+                                                    <*> (GH.parseField #contain_unexamined raw_))
+instance (C.Marshal Cvse'lookupRankingMetaInfo'params (C.Parsed Cvse'lookupRankingMetaInfo'params)) where
+    marshalInto raw_ Cvse'lookupRankingMetaInfo'params{..} = (do
+        (GH.encodeField #rank rank raw_)
+        (GH.encodeField #index index raw_)
+        (GH.encodeField #contain_unexamined contain_unexamined raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "rank" GH.Slot Cvse'lookupRankingMetaInfo'params Cvse'Rank) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "index" GH.Slot Cvse'lookupRankingMetaInfo'params Std_.Int32) where
+    fieldByLabel  = (GH.dataField 0 0 32 0)
+instance (GH.HasField "contain_unexamined" GH.Slot Cvse'lookupRankingMetaInfo'params Std_.Bool) where
+    fieldByLabel  = (GH.dataField 32 0 1 0)
+data Cvse'lookupRankingMetaInfo'results 
+type instance (R.ReprFor Cvse'lookupRankingMetaInfo'results) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'lookupRankingMetaInfo'results) where
+    typeId  = 10146423472157243424
+instance (C.TypedStruct Cvse'lookupRankingMetaInfo'results) where
+    numStructWords  = 0
+    numStructPtrs  = 1
+instance (C.Allocate Cvse'lookupRankingMetaInfo'results) where
+    type AllocHint Cvse'lookupRankingMetaInfo'results = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'lookupRankingMetaInfo'results (C.Parsed Cvse'lookupRankingMetaInfo'results))
+instance (C.AllocateList Cvse'lookupRankingMetaInfo'results) where
+    type ListAllocHint Cvse'lookupRankingMetaInfo'results = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'lookupRankingMetaInfo'results (C.Parsed Cvse'lookupRankingMetaInfo'results))
+data instance C.Parsed Cvse'lookupRankingMetaInfo'results
+    = Cvse'lookupRankingMetaInfo'results 
+        {stat :: (RP.Parsed Cvse'RankingMetaInfoStat)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'lookupRankingMetaInfo'results))
+deriving instance (Std_.Eq (C.Parsed Cvse'lookupRankingMetaInfo'results))
+instance (C.Parse Cvse'lookupRankingMetaInfo'results (C.Parsed Cvse'lookupRankingMetaInfo'results)) where
+    parse raw_ = (Cvse'lookupRankingMetaInfo'results <$> (GH.parseField #stat raw_))
+instance (C.Marshal Cvse'lookupRankingMetaInfo'results (C.Parsed Cvse'lookupRankingMetaInfo'results)) where
+    marshalInto raw_ Cvse'lookupRankingMetaInfo'results{..} = (do
+        (GH.encodeField #stat stat raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "stat" GH.Slot Cvse'lookupRankingMetaInfo'results Cvse'RankingMetaInfoStat) where
     fieldByLabel  = (GH.ptrField 0)
 data Cvse'Time 
 type instance (R.ReprFor Cvse'Time) = (R.Ptr (Std_.Just R.Struct))
@@ -1208,3 +1373,83 @@ instance (GH.HasField "totalScore" GH.Slot Cvse'RankingInfoEntry Std_.Double) wh
     fieldByLabel  = (GH.dataField 0 17 64 0)
 instance (GH.HasField "rank" GH.Slot Cvse'RankingInfoEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 32 0 32 0)
+data Cvse'RankingMetaInfoStat 
+type instance (R.ReprFor Cvse'RankingMetaInfoStat) = (R.Ptr (Std_.Just R.Struct))
+instance (C.HasTypeId Cvse'RankingMetaInfoStat) where
+    typeId  = 11408083903832936527
+instance (C.TypedStruct Cvse'RankingMetaInfoStat) where
+    numStructWords  = 9
+    numStructPtrs  = 2
+instance (C.Allocate Cvse'RankingMetaInfoStat) where
+    type AllocHint Cvse'RankingMetaInfoStat = ()
+    new _ = C.newTypedStruct
+instance (C.EstimateAlloc Cvse'RankingMetaInfoStat (C.Parsed Cvse'RankingMetaInfoStat))
+instance (C.AllocateList Cvse'RankingMetaInfoStat) where
+    type ListAllocHint Cvse'RankingMetaInfoStat = Std_.Int
+    newList  = C.newTypedStructList
+instance (C.EstimateListAlloc Cvse'RankingMetaInfoStat (C.Parsed Cvse'RankingMetaInfoStat))
+data instance C.Parsed Cvse'RankingMetaInfoStat
+    = Cvse'RankingMetaInfoStat 
+        {startTime :: (RP.Parsed Cvse'Time)
+        ,count :: (RP.Parsed Std_.Word32)
+        ,totalView :: (RP.Parsed Std_.Int64)
+        ,totalLike :: (RP.Parsed Std_.Int64)
+        ,totalCoin :: (RP.Parsed Std_.Int64)
+        ,totalFavorite :: (RP.Parsed Std_.Int64)
+        ,totalShare :: (RP.Parsed Std_.Int64)
+        ,totalReply :: (RP.Parsed Std_.Int64)
+        ,totalDanmaku :: (RP.Parsed Std_.Int64)
+        ,totalNew :: (RP.Parsed Std_.Int64)
+        ,endTime :: (RP.Parsed Cvse'Time)}
+    deriving(Generics.Generic)
+deriving instance (Std_.Show (C.Parsed Cvse'RankingMetaInfoStat))
+deriving instance (Std_.Eq (C.Parsed Cvse'RankingMetaInfoStat))
+instance (C.Parse Cvse'RankingMetaInfoStat (C.Parsed Cvse'RankingMetaInfoStat)) where
+    parse raw_ = (Cvse'RankingMetaInfoStat <$> (GH.parseField #startTime raw_)
+                                           <*> (GH.parseField #count raw_)
+                                           <*> (GH.parseField #totalView raw_)
+                                           <*> (GH.parseField #totalLike raw_)
+                                           <*> (GH.parseField #totalCoin raw_)
+                                           <*> (GH.parseField #totalFavorite raw_)
+                                           <*> (GH.parseField #totalShare raw_)
+                                           <*> (GH.parseField #totalReply raw_)
+                                           <*> (GH.parseField #totalDanmaku raw_)
+                                           <*> (GH.parseField #totalNew raw_)
+                                           <*> (GH.parseField #endTime raw_))
+instance (C.Marshal Cvse'RankingMetaInfoStat (C.Parsed Cvse'RankingMetaInfoStat)) where
+    marshalInto raw_ Cvse'RankingMetaInfoStat{..} = (do
+        (GH.encodeField #startTime startTime raw_)
+        (GH.encodeField #count count raw_)
+        (GH.encodeField #totalView totalView raw_)
+        (GH.encodeField #totalLike totalLike raw_)
+        (GH.encodeField #totalCoin totalCoin raw_)
+        (GH.encodeField #totalFavorite totalFavorite raw_)
+        (GH.encodeField #totalShare totalShare raw_)
+        (GH.encodeField #totalReply totalReply raw_)
+        (GH.encodeField #totalDanmaku totalDanmaku raw_)
+        (GH.encodeField #totalNew totalNew raw_)
+        (GH.encodeField #endTime endTime raw_)
+        (Std_.pure ())
+        )
+instance (GH.HasField "startTime" GH.Slot Cvse'RankingMetaInfoStat Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "count" GH.Slot Cvse'RankingMetaInfoStat Std_.Word32) where
+    fieldByLabel  = (GH.dataField 0 0 32 0)
+instance (GH.HasField "totalView" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 1 64 0)
+instance (GH.HasField "totalLike" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 2 64 0)
+instance (GH.HasField "totalCoin" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 3 64 0)
+instance (GH.HasField "totalFavorite" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 4 64 0)
+instance (GH.HasField "totalShare" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 5 64 0)
+instance (GH.HasField "totalReply" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 6 64 0)
+instance (GH.HasField "totalDanmaku" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 7 64 0)
+instance (GH.HasField "totalNew" GH.Slot Cvse'RankingMetaInfoStat Std_.Int64) where
+    fieldByLabel  = (GH.dataField 0 8 64 0)
+instance (GH.HasField "endTime" GH.Slot Cvse'RankingMetaInfoStat Cvse'Time) where
+    fieldByLabel  = (GH.ptrField 1)

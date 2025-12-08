@@ -193,10 +193,39 @@ instance Cvse'server_ MyServer where
          $(logInfo) $ "Received getAllRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
          let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
          entries <- runDbAction $ do
-            find (select [] collectionName) >>= mapCursorBatch parseRankingInfoEntry
-         let true_entries = filterJust entries 
-         $(logInfo) $ "getAllRankingInfo found " <> show (length true_entries) <> " entries."
-         return (Cvse'getAllRankingInfo'results { entries = true_entries })
+            getRankInfo (fromIntegral param.from_rank) (fromIntegral param.to_rank) collectionName 
+            >>= mapCursorBatch (\doc -> Cvse'Index {
+               bvid = at "_id" doc,
+               avid = at "avid" doc
+            })
+         $(logInfo) $ "getAllRankingInfo found " <> show (length entries) <> " entries."
+         return (Cvse'getAllRankingInfo'results { entries = entries })
+      )
+   
+   cvse'lookupRankingInfo server = handleParsed (
+      \param -> mainWrapper server $ do
+         $(logInfo) $ "Received lookupRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", contain_unexamined=" <> show param.contain_unexamined 
+            <> "with " <> show (length param.indices) <> " indices."
+         let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
+         entries <- runDbAction $ do
+            find (select (lookupRankingInfoQuery param.indices) collectionName)
+            >>= mapCursorBatch parseRankingInfoEntry
+         $(logInfo) $ "lookupRankingInfo found " <> show (length entries) <> " entries."
+         return (Cvse'lookupRankingInfo'results { entries = entries })
+      )
+   
+   cvse'lookupRankingMetaInfo server = handleParsed (
+      \param -> mainWrapper server $ do
+         $(logInfo) $ "Received lookupRankingMetaInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index 
+            <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
+         let query = lookupRankingMetaInfoQuery param.rank (fromIntegral param.index) param.contain_unexamined
+         result <- runDbAction $ findOne query
+         case result of
+            Just doc -> return (Cvse'lookupRankingMetaInfo'results {
+               stat = parseRankingMetaInfoStat doc
+            })
+            Nothing -> throw $ "No ranking meta info found for rank " <> show param.rank <> ", index " <> show param.index 
+               <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
       )
 
 serverAddr = "0.0.0.0"

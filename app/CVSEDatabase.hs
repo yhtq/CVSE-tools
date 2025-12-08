@@ -77,14 +77,18 @@ domesticRankStartTime index = domesticRankEndTime (index - 1)
 
 mapCursorBatch :: (MonadIO m) => (Document -> a) -> Cursor -> Action m [a]
 mapCursorBatch f cursor = do
-    is_closed <- isCursorClosed cursor
-    if is_closed then return [] else do
-        curs <- nextBatch cursor
-        if null curs
-            then return []
-        else do
-            rest <- mapCursorBatch f cursor
-            return (fmap f curs ++ rest)
+        doc <- next cursor
+        case doc of
+            Nothing -> return []
+            Just d -> do
+                rest <- mapCursorBatch f cursor
+                return (f d : rest)
+        -- curs <- nextBatch cursor
+        -- if null curs
+        --     then return []
+        -- else do
+        --     rest <- mapCursorBatch f cursor
+        --     return (fmap f curs ++ rest)
     -- map f <$> rest cursor
 
 -- 数据库结构：
@@ -594,23 +598,55 @@ calculateVideoPoints bvids collection (start1, end1) (start2, end2) = do
             cleanStage,
             outStage
             ]
+        -- 接下来，计算该期排行榜的统计数据
+        statsPipeline2 = [
+            [
+                "$group" =: [
+                    "_id" =: Null,
+                    "count" =: ["$sum" =: 1],
+                    "totalNew" =: ["$sum" =: ["$cond" =: [val "$isNew", val 1, val 0]]],
+                    "totalView" =: ["$sum" =: "$view"],
+                    "totalLike" =: ["$sum" =: "$like"],
+                    "totalShare" =: ["$sum" =: "$share"],
+                    "totalFavorite" =: ["$sum" =: "$favorite"],
+                    "totalCoin" =: ["$sum" =: "$coin"],
+                    "totalReply" =: ["$sum" =: "$reply"],
+                    "totalDanmaku" =: ["$sum" =: "$danmaku"]
+                ]
+            ],
+            [
+                "$addFields" =: [
+                    "_id" =: collection,
+                    "startTime" =: start1,
+                    "endTime" =: start2
+                ]
+            ],
+            [
+                "$merge" =: [
+                    "into" =: rankingMetaInfoCollectionName,
+                    "whenMatched" =: "replace",
+                    "whenNotMatched" =: "insert"
+                ]
+            ] ]
     do
         liftIO $ print statsPipeline
         void $ aggregateCursor collection statsPipeline (AggregateConfig {allowDiskUse = True}) >>= rest
+        void $ aggregateCursor collection statsPipeline2 (AggregateConfig {allowDiskUse = True}) >>= rest
 
-lockCollectionName :: Text
-lockCollectionName = "video_points_locks"
+rankingMetaInfoCollectionName :: Text
+rankingMetaInfoCollectionName = "ranking_meta_info"
 
 checkLock :: Collection -> Action IO Bool
 checkLock collection = do
-    mdoc <- findOne (select ["_id" =: collection, "locked" =: True] lockCollectionName)
+    mdoc <- findOne (select ["_id" =: collection, "locked" =: True] rankingMetaInfoCollectionName)
     case mdoc of
         Just _ -> return True
         Nothing -> return False
 
 lockCollection :: Collection -> Action IO ()
 lockCollection collection = do
-    void $ insert lockCollectionName ["_id" =: collection, "locked" =: True]
+    void $ upsert (select ["_id" =: collection] rankingMetaInfoCollectionName)
+        ["$set" =: ["locked" =: True]]
 
 genCollectionName :: Parsed Cvse'Rank -> Int -> Bool -> Collection
 genCollectionName rank index contain_unexamined =
@@ -651,12 +687,37 @@ genPeriod rank index =
     in
     ((start1, end1), (start2, end2))
 
-parseRankingInfoEntry :: Document -> Maybe (Parsed Cvse'RankingInfoEntry)
-parseRankingInfoEntry doc = 
-    if isJust  $ look "errmsg" doc 
-        then Nothing
-    else 
-        Just Cvse'RankingInfoEntry {
+genGetRankInfoQuery :: Int -> Int -> Collection -> Query
+genGetRankInfoQuery from_rank to_rank =
+    select ["rank" =: ["$gte" =: fromIntegral from_rank, "$lt" =: fromIntegral to_rank]]
+        
+getRankInfo :: Int -> Int -> Collection -> Action IO Cursor
+getRankInfo from_rank to_rank collection =
+    let pipeline = [
+            [
+                "$match" =: [
+                    "rank" =: [
+                        "$gte" =: fromIntegral from_rank,
+                        "$lt" =: fromIntegral to_rank
+                    ]
+                ]
+            ],
+            [
+                "$project" =: [
+                    "_id" =: 1,
+                    "avid" =: 1
+                ]
+            ]
+            ] in
+    aggregateCursor collection pipeline (AggregateConfig {allowDiskUse = True})
+
+lookupRankingInfoQuery :: [Parsed Cvse'Index] -> Selector
+lookupRankingInfoQuery indices =
+    let bvids = map (\index -> index.bvid) indices in
+    ["_id" =: ["$in" =: bvids]]
+
+parseRankingInfoEntry :: Document -> Parsed Cvse'RankingInfoEntry
+parseRankingInfoEntry doc = Cvse'RankingInfoEntry {
             avid = at "avid" doc,
             bvid = at "_id" doc,
             isNew = at "isNew" doc,
@@ -682,4 +743,24 @@ parseRankingInfoEntry doc =
             totalScore = at "totalScore" doc
         }
 
+lookupRankingMetaInfoQuery :: Parsed Cvse'Rank -> Int -> Bool -> Query
+lookupRankingMetaInfoQuery rank index contain_unexamined =
+    let collection = genCollectionName rank index contain_unexamined in
+    select [
+        "_id" =: collection
+    ] rankingMetaInfoCollectionName
 
+parseRankingMetaInfoStat :: Document -> Parsed Cvse'RankingMetaInfoStat
+parseRankingMetaInfoStat doc = Cvse'RankingMetaInfoStat {
+    count = fromIntegral $ at "count" doc,
+    totalNew = at "totalNew" doc,
+    totalView = at "totalView" doc,
+    totalLike = at "totalLike" doc,
+    totalShare = at "totalShare" doc,
+    totalFavorite = at "totalFavorite" doc,
+    totalCoin = at "totalCoin" doc,
+    totalReply = at "totalReply" doc,
+    totalDanmaku = at "totalDanmaku" doc,
+    startTime = buildTime . utcToSystemTime $ at "startTime" doc,
+    endTime = buildTime . utcToSystemTime $ at "endTime" doc
+}
