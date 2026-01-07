@@ -43,12 +43,12 @@ getRankEndTime firstEnd index =
     let diffDays = TCL.calendarTimeDays $ TCL.CalendarDiffDays 0 ((index - 1) * 7) in
     localTimeToUTC uft8 $ addLocalDurationRollOver diffDays firstEnd
 
--- SV 刊第一期截止时间为 2019/05/31 0.00:00 UTC+8
+-- SV 刊第 182 期截止时间为 2025/12/6 0.00:00 UTC+8
 -- 第 i 期为该时间之后 i - 1 周
 svRankEndTime :: Integer -> UTCTime
 svRankEndTime index =
-    let firstEnd = LocalTime (fromGregorian 2019 5 31) (TCL.TimeOfDay 0 0 0) in
-    getRankEndTime firstEnd index
+    let firstEnd = LocalTime (fromGregorian 2025 12 6) (TCL.TimeOfDay 0 0 0) in
+    getRankEndTime firstEnd (index - 181)
 
 -- 第 i 期开始时间为第 i - 1 期截止时间
 svRankStartTime :: Integer -> UTCTime
