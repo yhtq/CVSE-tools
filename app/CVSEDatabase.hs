@@ -43,31 +43,31 @@ getRankEndTime firstEnd index =
     let diffDays = TCL.calendarTimeDays $ TCL.CalendarDiffDays 0 ((index - 1) * 7) in
     localTimeToUTC uft8 $ addLocalDurationRollOver diffDays firstEnd
 
--- SV 刊第 182 期截止时间为 2025/12/6 0.00:00 UTC+8
+-- SV 刊第 182 期截止时间为 2026/2/14 0.00:00 UTC+8
 -- 第 i 期为该时间之后 i - 1 周
 svRankEndTime :: Integer -> UTCTime
 svRankEndTime index =
-    let firstEnd = LocalTime (fromGregorian 2025 12 6) (TCL.TimeOfDay 0 0 0) in
+    let firstEnd = LocalTime (fromGregorian 2026 2 14) (TCL.TimeOfDay 0 0 0) in
     getRankEndTime firstEnd (index - 181)
 
 -- 第 i 期开始时间为第 i - 1 期截止时间
 svRankStartTime :: Integer -> UTCTime
 svRankStartTime index = svRankEndTime (index - 1)
 
--- UTAU 刊第一期为 2025/12/6 0.00:00 UTC+8
+-- UTAU 刊第一期为 2026/2/14 0.00:00 UTC+8
 utauRankEndTime :: Integer -> UTCTime
 utauRankEndTime index =
-    let firstEnd = LocalTime (fromGregorian 2025 12 6) (TCL.TimeOfDay 0 0 0) in
+    let firstEnd = LocalTime (fromGregorian 2026 2 14) (TCL.TimeOfDay 0 0 0) in
     getRankEndTime firstEnd index
 
 -- 第 i 期开始时间为第 i - 1 期截止时间
 utauRankStartTime :: Integer -> UTCTime
 utauRankStartTime index = utauRankEndTime (index - 1)
 
--- 国产榜第 68 期结束时间为 2025/12/6 0.00:00 UTC+8
+-- 国产榜第 68 期结束时间为 2026/2/14 0.00:00 UTC+8
 domesticRankEndTime :: Integer -> UTCTime
 domesticRankEndTime index =
-    let firstEnd = LocalTime (fromGregorian 2025 12 6) (TCL.TimeOfDay 0 0 0) in
+    let firstEnd = LocalTime (fromGregorian 2026 2 14) (TCL.TimeOfDay 0 0 0) in
     getRankEndTime firstEnd (index - 67)
 
 -- 第 i 期开始时间为第 i - 1 期截止时间
@@ -295,9 +295,11 @@ getAllMetaInfo get_unexamined get_unincluded from_date to_date =
             else Nothing
     ]) ++ getFromToSelector "pubdate" from_date to_date
 
-lookupMetaInfoQuery :: Parsed Cvse'Index -> Selector
-lookupMetaInfoQuery index =
-    ["_id" =: index.bvid]
+lookupMetaInfoQuery :: [Parsed Cvse'Index] -> Selector
+lookupMetaInfoQuery indices =
+    let bvids = map (\index -> index.bvid) indices in
+    ["_id" =: ["$in" =: bvids]]
+
 
 lookupDataInfoQuery :: Parsed Cvse'Index -> Parsed Cvse'Time -> Parsed Cvse'Time -> Selector
 lookupDataInfoQuery index from_date to_date =

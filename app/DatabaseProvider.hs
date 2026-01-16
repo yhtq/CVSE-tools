@@ -1,4 +1,4 @@
-module DatabaseProvider where
+ module DatabaseProvider where
 
 import Control.Exception.Base(try, catch, SomeException, ErrorCall)
 import Data.Effect.Except (Throw, throw)

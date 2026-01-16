@@ -130,13 +130,8 @@ instance Cvse'server_ MyServer where
    cvse'lookupMetaInfo server = handleParsed (
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received lookupMetaInfo request from client: " <> server.peer <> " with " <> show (length param.indices) <> " indices."
-         docs <- mapM (\index -> do
-               result <- runDbAction $ findOne (select (lookupMetaInfoQuery index) videoMetadataCollection)
-               case result of
-                  Just doc -> return doc
-                  Nothing -> throw $ "Video with bvid " <> index.bvid <> " and avid " <> index.avid <> " not found."
-               ) param.indices
-         let entries = fmap parseRecordingNewEntry docs
+         entries <- runDbAction $ find (select (lookupMetaInfoQuery param.indices) videoMetadataCollection)
+                  >>= mapCursorBatch parseRecordingNewEntry
          return (Cvse'lookupMetaInfo'results { entries = entries })
          )
    cvse'lookupDataInfo server = handleParsed (
