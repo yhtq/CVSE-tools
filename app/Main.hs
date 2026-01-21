@@ -49,7 +49,7 @@ mainHandler :: Host -> Database -> Eff '[
 mainHandler host database  = runEff .
          runThrow .
          runCatch .
-         defaultLoggerHandler logFilePath (Just Debug) .
+         defaultLoggerHandler logFilePath (Just Info) .
          runCatch .
          runInDatabase host .
          runInDatabaseTable database  .

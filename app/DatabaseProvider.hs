@@ -25,15 +25,23 @@ import Control.Monad.Hefty (
     type (~>),
     (&), rewrite, Ask(..)
  )
-import Database.MongoDB (Pipe, Database, Action, master, access, connect, close, Host, Document)
+import Database.MongoDB
+    ( Pipe,
+      Database,
+      Action,
+      master,
+      access,
+      connect,
+      close,
+      Host,
+      Document,
+      isCursorClosed, Collection, allCollections )
 import Control.Monad.Hefty.Reader (runAsk, ask)
 import Data.Text (Text, pack)
 import Control.Monad.Hefty.Except (Catch, runCatch)
 import qualified Control.Monad.Hefty.Except as Except
-import Logger 
-import Database.MongoDB.Query (Cursor)
-import Database.MongoDB (isCursorClosed)
-import Database.MongoDB.Query (next)
+import Logger
+import Database.MongoDB.Query ( Cursor, next )
 import Control.Monad.IO.Class (MonadIO)
 
 
@@ -61,13 +69,13 @@ data DatabaseIO :: Effect where
     RunDbAction :: forall a f. Action IO a -> DatabaseIO f a
 makeEffectF ''DatabaseIO
 
-runInDatabase :: forall es. (Emb IO :> es, Throw ErrMessage :> es, LogE :> es, FOEs es) => 
+runInDatabase :: forall es. (Emb IO :> es, Throw ErrMessage :> es, LogE :> es, FOEs es) =>
     Host -> (Eff (DataBaseState ': es) ~> Eff (Catch ErrMessage ': es))
-runInDatabase host = reinterpretWith __handler 
-        where __handler :: AlgHandler DataBaseState f (Eff (Catch ErrMessage ': es)) a 
+runInDatabase host = reinterpretWith __handler
+        where __handler :: AlgHandler DataBaseState f (Eff (Catch ErrMessage ': es)) a
               __handler Ask f = do
                 pipe <- safeLiftIO $ connect host
-                result <- Except.catch 
+                result <- Except.catch
                     (Right <$> f (DataBaseHandler pipe))
                     (\(e :: ErrMessage) -> do
                         $(logDebug) $ "Database connection error: " <> e
@@ -76,7 +84,7 @@ runInDatabase host = reinterpretWith __handler
                 case result of
                     Right val -> pure val
                     Left err -> throw err
-        
+
 runInDatabaseTable :: forall es. Database -> (Eff (DataBaseTableState ': es) ~> Eff (DataBaseState ': es))
 runInDatabaseTable db = reinterpret \case
     Ask -> do
@@ -88,3 +96,12 @@ runDatabaseIO = interpret \case
     RunDbAction action -> do
         (DataBaseTableHandler (pipe, db)) <- ask
         safeLiftIO $ access pipe master db action
+
+assert :: forall es. (Throw ErrMessage :> es) => Bool -> Text -> Eff es ()
+assert True _ = pure ()
+assert False errMsg = throw errMsg
+
+checkCollectionExists :: Collection -> Action IO Bool
+checkCollectionExists collName = do
+    collections <- allCollections
+    return $ collName `elem` collections
