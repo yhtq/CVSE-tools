@@ -2,6 +2,7 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
 module CVSEDatabase where
 import Database.MongoDB
+import qualified Database.MongoDB.Admin as DBA
 import Logger
 import Data.Time (diffUTCTime, UTCTime, LocalTime(..), addLocalTime, addGregorianMonthsClip, addGregorianMonthsRollOver, localTimeToUTC, addUTCTime)
 import qualified Data.Time.Clock as TC
@@ -606,7 +607,24 @@ calculateVideoPoints bvids collection (start1, end1) (start2, end2) = do
                 "meta" =: 0,
                 "prev_stats" =: 0,
                 "curr_stats" =: 0
-            ] ]
+            ]
+            ]
+        cleanStage2 = [
+            "$addFields" =: [
+                -- curr field 只留数据的 id
+                "curr_data_id" =: "$curr._id",
+                -- 如果不是新曲，prev field 只留数据的 id，否则设为 null
+                "prev_data_id" =: unfoldField (iteField
+                        (raw $ "$isNew" `eqField` raw True)
+                        (raw Null)
+                        (raw ["_id" =: "$prev._id"]))
+            ]]
+        cleanStage3 = [
+            "$project" =: [
+                "curr" =: 0,
+                "prev" =: 0
+            ]
+            ]
         -- 按分数排名并计入排序，同分的同排名
         sortStage = [
             "$setWindowFields" =: [
@@ -638,6 +656,8 @@ calculateVideoPoints bvids collection (start1, end1) (start2, end2) = do
             totalStage,
             sortStage,
             cleanStage,
+            cleanStage2,
+            cleanStage3,
             outStage
             ]
         -- 接下来，计算该期排行榜的统计数据
@@ -671,7 +691,6 @@ calculateVideoPoints bvids collection (start1, end1) (start2, end2) = do
                 ]
             ] ]
     do
-        liftIO $ print statsPipeline
         void $ aggregateCursor collection statsPipeline (AggregateConfig {allowDiskUse = True}) >>= rest
         void $ aggregateCursor collection statsPipeline2 (AggregateConfig {allowDiskUse = True}) >>= rest
 
@@ -689,6 +708,11 @@ lockCollection :: Collection -> Action IO ()
 lockCollection collection = do
     void $ upsert (select ["_id" =: collection] rankingMetaInfoCollectionName)
         ["$set" =: ["locked" =: True]]
+
+unlockCollection :: Collection -> Action IO ()
+unlockCollection collection = do
+    void $ upsert (select ["_id" =: collection] rankingMetaInfoCollectionName)
+        ["$set" =: ["locked" =: False]]
 
 rankStr :: Parsed Cvse'Rank -> String
 rankStr rank = case rank.value of
@@ -742,7 +766,7 @@ lookupUsingIdWithDefault collection lookups = [
                     "$cond" =: [
                         val ["$gt" =: [val ["$size" =: "$___lookup_result___"], val 0]],
                         val ["$arrayElemAt" =: [val ("$___lookup_result___." <> foreignField), val 0]],
-                        val defaultValue
+                        defaultValue
                     ]
                 ]
             ]
@@ -758,7 +782,8 @@ isHot = raw ("$" <> specialRankField) `eqField` raw hotContent
 isSH = raw ("$" <> specialRankField) `eqField` raw shContent
 
 -- 假设进入该函数时，状态是刚刚完成 calculateVideoPoints 的状态
-processSHAndHot :: forall es. (Emb IO :> es, Throw ErrMessage :> es, DataBaseTableState :> es) =>
+-- 结束后，会将 ranking collection 更新至最终状态，并生成 SH 和 HOT 统计集合
+processSHAndHot :: forall es. (LogE :> es, Emb IO :> es, Throw ErrMessage :> es, DataBaseTableState :> es) =>
     EachRankingConfig -> Eff (DatabaseIO ': es) ()
 processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexamined=contain_unexamined}) = do
     let currRankingInfoCollection = genCollectionName config
@@ -769,8 +794,10 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
         -- HOT 统计是统计近十周的上主榜次数 (curr |-| 0 到 curr |-| 9)，因此只要在上周的 HOT 统计基础上，减去 curr |-| 10，再加上 curr |-| 0 即可
         tenWeeksAgoRankingInfoCollection = genCollectionName (config |-| 10)
     -- drop 掉当前的 SH 和 HOT 统计集合
-    runDbAction $ dropCollection currSHCollection
-    runDbAction $ dropCollection currHOTCollection
+    runDbAction $ do 
+        dropCollection currSHCollection
+        dropCollection currHOTCollection
+        createIndex (DBA.index currSHCollection ["rank" =: (-1), "totalScore" =: (-1)])
     -- 生成初始的 currSHCollection：对于 currRankingInfoCollection 中 rank <= 3 的视频，计数是上期的计数加一，否则延续上期计数（如果上期不存在，则计数是 0）
     prevSHExists <- runDbAction $ checkCollectionExists prevSHCollection
     prevHOTExists <- runDbAction $ checkCollectionExists prevHOTCollection
@@ -778,7 +805,7 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
     assert (prevSHExists == prevHOTExists) "SH and HOT previous collection existence mismatch"
 
     let mergePrevSHPipe = lookupUsingIdWithDefault prevSHCollection
-            [("count", "prev_count", 0)]
+            [("count", "prev_count", val 0)]
     -- 由于 HOT 的特殊性，统计前三/主榜时，应当使用的方法是分数大于等于第三名/主榜最后一名的分数
     let get_least_score_rank_gte n = do
             doc <- runDbAction $ aggregateCursor currRankingInfoCollection [
@@ -791,7 +818,8 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                         ]
                     ],
                     [
-                        "$sort" =: ["rank" =: 1]
+                        -- rank 从大到小排名
+                        "$sort" =: ["rank" =: -1]
                     ],
                     [
                         "$limit" =: 1
@@ -800,13 +828,15 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
             case doc of
                 [] -> throw $ "No video found with rank greater than " <> pack (show n)
                 (d:_) -> return (at "totalScore" d :: Float)
-    let maxMain = config.rank.rankingConfig.maxMain
+    let maxMain = (rankingConfig config.rank).maxMain
     let in_first_three = do
-            leastScore <- get_least_score_rank_gte 3
-            return ["$totalScore" `gteField` raw leastScore]
-    let in_main = do
+            leastScore <- get_least_score_rank_gte (3 :: Int)
+            ($logDebug) ("Least score for top 3: " <> pack (show leastScore))
+            return $ "$totalScore" `gteField` raw leastScore
+    let on_main = do
             leastScore <- get_least_score_rank_gte maxMain
-            return ["$totalScore" `gteField` raw leastScore]
+            ($logDebug) ("Least score for main list: " <> pack (show leastScore))
+            return $ "$totalScore" `gteField` raw leastScore
     let resortingPipe temporary = [
             -- 对所有 rank > 0，totalScore > 0 的视频重新排序（减少计算量）
             [
@@ -831,34 +861,34 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
             [
                 "$merge" =: [
                     "into" =: currRankingInfoCollection,
-                    "whenMatched" =: [
+                    "whenMatched" =: [[
                         "$set" =: [
-                            "rank" =: "$rank"
+                            "rank" =: "$$new.rank"
                         ]
-                    ],
+                    ]],
                     "whenNotMatched" =: "discard"
                 ]
             ]]
+    let cleanA = modify (select [] currRankingInfoCollection) 
+                    [
+                        "$unset" =: [
+                            "is_sh" =: 1,
+                            "old_sh" =: 1,
+                            "is_hot" =: 1,
+                            "old_hot" =: 1,
+                            "sh_status_has_changed" =: 1,
+                            "hot_status_has_changed" =: 1
+                        ]
+                    ]
     when (prevSHExists && prevHOTExists) do
+        runDbAction cleanA
         -- 计算本期的所有 HOT 和 SH
         -- 先处理 SH，找到 currRankingInfoCollection 中的前三，如果其中某个视频在 prevSHCollection 中的计数已经 >= 2，则将 rank 修改为 0，special_rank 修改为 shContent
         -- 由于管道需要迭代，因此还要记录 old_sh 字段，也就是如果之前 special_rank 是 shContent，则 old_sh 为 True，否则为 False
         let shPipe in_first_three_cond = [
                 [
                     "$match" =: [
-                        "$expr" =: in_first_three_cond
-                    ]
-                ],
-                [
-                    "$project" =: [
-                        "_id" =: 1,
-                        "old_sh" =: [
-                            "$cond" =: [
-                                val isSH,
-                                val True,
-                                val False
-                            ]
-                        ]
+                        "$expr" =: [in_first_three_cond]
                     ]
                 ]] ++ mergePrevSHPipe ++ [
                 [
@@ -870,49 +900,45 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                                 val True,
                                 val False
                             ]
-                        ]
+                        ],
+                        "old_sh" =: unfoldField (iteField
+                            (raw isSH)
+                            (raw True)
+                            (raw False)
+                        )
                     ]
                 ],
                 [
                     "$merge" =: [
                         "into" =: currRankingInfoCollection,
-                        "whenMatched" =: [
+                        "whenMatched" =: [[
                             "$set" =: [
+                                "old_sh" =: "$$new.old_sh",
+                                "is_sh" =: "$$new.is_sh",
                                 "rank" =: [
                                     "$cond" =: [
-                                        val "$is_sh",
+                                        val "$$new.is_sh",
                                         val 0,
                                         val "$rank"
                                     ]
                                 ],
                                 specialRankField =: [
                                     "$cond" =: [
-                                        val "$is_sh",
+                                        val "$$new.is_sh",
                                         val shContent,
                                         val ("$" <> specialRankField)
                                     ]
-                                ]
+                                ],
+                                "sh_status_has_changed" =: unfoldField (iteField
+                                    (raw ("$$new.old_sh" `eqField` "$$new.is_sh"))
+                                    (raw False)
+                                    (raw True))
                             ]
-                        ],
+                        ]],
                         "whenNotMatched" =: "discard"
                     ]
-                ],
-                -- 只留所有 old_sh 为 False，new_sh 为 True 的视频作为输出
-                [
-                    "$match" =: [
-                        "$expr" =: [
-                            "$and" =: [
-                                [raw "$old_sh" `eqField` raw False],
-                                [isSH]
-                            ]
-                        ]
-                    ]
-                ],
-                [
-                    "$project" =: [
-                        "_id" =: 1
-                    ]
-                ]]
+                ]
+                ]
         -- HOT 的处理方式是：
         -- 首先准备当前的 HOT 计数，具体来说：
         --   当前视频的最近十期主榜计数（HOTCollection 中的 count 字段）= 
@@ -923,33 +949,31 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
         --    (上期的 is_hot 字段 && 当前 HOT 计数 > 3)
         --    || (当前 HOT 计数 >= 7)
         -- 之后更新数据，所有当期 is_hot 为 True 的视频，rank 设为 0，special_rank 设置为 hotContent
-        let hotPipe in_main_cond =
+        let hotPipe on_main_cond =
                 lookupUsingIdWithDefault prevHOTCollection
-                    [("count", "prev_count", 0), ("is_hot", "prev_is_hot", val False)]
+                    [("count", "prev_count", val 0), ("is_hot", "prev_is_hot", val False)]
                 ++
                 lookupUsingIdWithDefault tenWeeksAgoRankingInfoCollection
                     [("on_main", "ten_weeks_ago_on_main", val False)]
                 ++ [
                 [
                     "$addFields" =: [
-                        "count" =: [
-                            iteField
+                        "ten_weeks_ago_on_main_diff" =: unfoldField (iteField
                                 (raw ("$ten_weeks_ago_on_main" `eqField` raw True))
-                                (raw "$prev_count" - 1)
-                                (raw "$prev_count")
-                        ],
-                        "count" =: [
-                            iteField
-                                (raw in_main_cond)
-                                (raw "$count" + 1)
-                                (raw "$count")
-                        ],
-                        "old_hot" =: [
-                            iteField
+                                (raw 1)
+                                (raw 0)),
+                        "on_main_diff" =: unfoldField (iteField
+                                (raw on_main_cond)
+                                (raw 1)
+                                (raw 0)
+                        ),
+                        "count" =: unfoldField (raw "$prev_count" - raw "$ten_weeks_ago_on_main_diff" + raw "$on_main_diff")
+                        ,
+                        "old_hot" =: unfoldField (iteField
                                 (raw isHot)
                                 (raw True)
                                 (raw False)
-                        ],
+                        ),
                         "is_hot" =: [
                             "$and" =: [
                                 [
@@ -974,58 +998,65 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                 [
                     "$merge" =: [
                         "into" =: currRankingInfoCollection,
-                        "whenMatched" =: [
+                        "whenMatched" =: [[
                             "$set" =: [
+                                "is_hot" =: "$$new.is_hot",
+                                "old_hot" =: "$$new.old_hot",
                                 "rank" =: [
                                     "$cond" =: [
-                                        val "$is_hot",
+                                        val "$$new.is_hot",
                                         val 0,
                                         val "$rank"
                                     ]
                                 ],
                                 specialRankField =: [
                                     "$cond" =: [
-                                        val "$is_hot",
+                                        val "$$new.is_hot",
                                         val hotContent,
                                         val ("$" <> specialRankField)
                                     ]
-                                ]
+                                ],
+                                "hot_status_has_changed" =: unfoldField (iteField
+                                    (raw ("$$new.old_hot" `eqField` raw "$$new.is_hot"))
+                                    (raw False)
+                                    (raw True))
                             ]
-                        ],
+                        ]],
                         "whenNotMatched" =: "discard"
                     ]
-                ],
-                -- 只留所有 old_hot 为 False，new_hot 为 True 的视频作为输出
-                [
-                    "$match" =: [
-                        "$expr" =: [
-                            "$and" =: [
-                                [raw "$old_hot" `eqField` raw False],
-                                [raw ("$" <> specialRankField) `eqField` raw hotContent]
-                            ]
-                        ]
-                    ]
-                ],
-                [
-                    "$project" =: [
-                        "_id" =: 1
-                    ]
-                ]]
+                ]
+                ]
         let processingAux = do
                 in_first_three_cond <- in_first_three
-                in_main_cond <- in_main
+                on_main_cond <- on_main
                 -- 处理 SH
-                shChanges <- runDbAction $ aggregateCursor currRankingInfoCollection (shPipe in_first_three_cond) (AggregateConfig {allowDiskUse = True}) >>= rest
+                shReports <- runDbAction $ aggregateCursor currRankingInfoCollection (shPipe in_first_three_cond) (AggregateConfig {allowDiskUse = True}) >>= rest
                 -- 处理 HOT
-                hotChanges <- runDbAction $ aggregateCursor currRankingInfoCollection (hotPipe in_main_cond) (AggregateConfig {allowDiskUse = True}) >>= rest
+                hotReports <- runDbAction $ aggregateCursor currRankingInfoCollection (hotPipe on_main_cond) (AggregateConfig {allowDiskUse = True}) >>= rest
+                unless (null shReports) $
+                    $(logError) $ "SH processing report: " <> pack (show shReports)
+                unless (null hotReports) $
+                    $(logError) $ "HOT processing report: " <> pack (show hotReports)
+                newSH <- runDbAction $ find (select ["sh_status_has_changed" =: True] currRankingInfoCollection) >>= rest
+                newHOT <- runDbAction $ find (select ["hot_status_has_changed" =: True] currRankingInfoCollection) >>= rest
+                $(logInfo) $ "Videos with SH status changed: " <> pack (show newSH)
+                $(logInfo) $ "Videos with HOT status changed: " <> pack (show newHOT)
                 -- 如果此轮没有变化，则结束，否则重复进行
-                unless (null shChanges && null hotChanges) do
+                unless (null newSH && null newHOT) do
                     -- 重新排序
                     void $ runDbAction $ aggregateCursor currRankingInfoCollection (resortingPipe True) (AggregateConfig {allowDiskUse = True}) >>= rest
                     processingAux
         processingAux
-    -- SH 和 HOT 状态稳定后，进行最终的排序
-    void $ runDbAction $ aggregateCursor currRankingInfoCollection (resortingPipe False) (AggregateConfig {allowDiskUse = True}) >>= rest
+    -- SH 和 HOT 状态稳定后，进行最终的排序，并清理临时字段
+    runDbAction $ do 
+        aggregateCursor currRankingInfoCollection 
+            (resortingPipe False) 
+            (AggregateConfig {allowDiskUse = True}) >>= rest
+        cleanA
+    
+    -- 最后，更新 currSHCollection 和 currHOTCollection
+    in_first_three_cond <- in_first_three
+    on_main_cond <- on_main
     let shPrecPipe = [
             -- 把 prevSHCollection 中所有视频导入 currSHCollection，作为基础
             [
@@ -1034,40 +1065,28 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
             [
                 "$out" =: currSHCollection
             ]]
-    runDbAction $ aggregateCursor prevSHCollection shPrecPipe (AggregateConfig {allowDiskUse = True}) >>= rest
-    -- 再将 currRankingInfoCollection 中 rank <= 3 的视频计数加一
+    shPrecReport <- runDbAction $ aggregateCursor prevSHCollection shPrecPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    unless (null shPrecReport) $
+        $(logError) $ "SH precopy report: " <> pack (show shPrecReport)
+    -- 再将 currRankingInfoCollection 中满足前三条件的视频计数加一
     let shCurPipe = [
             [
-                "$match" =: ["rank" =: ["$lte" =: 3]]
+                "$match" =: [
+                    "$expr" =: [in_first_three_cond]
+                ]
             ],
             [
                 "$project" =: [
                     "_id" =: 1
                 ]
-            ],
+            ]] ++
+            lookupUsingIdWithDefault currSHCollection
+                [("count", "prev_count", val 0)] ++
             [
-                "$lookup" =: [
-                    "from" =: currSHCollection,
-                    "localField" =: "_id",
-                    "foreignField" =: "_id",
-                    "as" =: "prev_sh"
-                ]
-            ],
-            [
-                "$addFields" =: [
-                    "prev_count" =: [
-                        "$cond" =: [
-                            val ["$gt" =: [val ["$size" =: "$prev_sh"], val 0]],
-                            val ["$arrayElemAt" =: [val "$prev_sh.count", val 0]],
-                            val 0
-                        ]
-                    ]
-                ]
-            ],
             [
                 "$project" =: [
                     "_id" =: 1,
-                    "count" =: ["$add" =: [val "$prev_count", val 1]]
+                    "count" =: unfoldField (raw "$prev_count" + raw 1)
                 ]
             ],
             [
@@ -1077,11 +1096,166 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                     "whenNotMatched" =: "insert"
                 ]
             ]]
-    runDbAction $ aggregateCursor currRankingInfoCollection shCurPipe (AggregateConfig {allowDiskUse = True}) >>= rest
-
-
-
-    return ()
+    shCurReport <- runDbAction $ aggregateCursor currRankingInfoCollection shCurPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    unless (null shCurReport) $
+        $(logError) $ "SH current report: " <> pack (show shCurReport)
+    -- 更新 currRankingInfoCollection 中的 on_main, on_side 字段
+    on_side_cond <- do
+            leastScore <- get_least_score_rank_gte (rankingConfig config.rank).maxSide
+            return ["$totalScore" `gteField` raw leastScore]
+    let finalUpdatePipe = [
+            [
+                "$addFields" =: [
+                    "on_main" =: unfoldField (iteField
+                        (raw on_main_cond)
+                        (raw True)
+                        (raw False)),
+                    "on_side" =: unfoldField (iteField
+                        (raw on_side_cond)
+                        (raw True)
+                        (raw False)
+                        )
+                    ]
+            ],
+            [
+                "$merge" =: [
+                    "into" =: currRankingInfoCollection,
+                    "whenMatched" =: [[
+                        "$set" =: [
+                            "on_main" =: "$$new.on_main",
+                            "on_side" =: "$$new.on_side"
+                        ]
+                    ]],
+                    "whenNotMatched" =: "discard"
+                ]
+            ]]
+    $(logDebug) $ "Final on_main/on_side update pipe: " <> pack (show finalUpdatePipe)
+    updateReport <- runDbAction $ aggregateCursor currRankingInfoCollection finalUpdatePipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    $(logDebug) $ "Final on_main/on_side update report: " <> pack (show updateReport)
+    -- 以及更新 HOT 计数
+    let hotPrecPipe = [
+            -- 把 prevHOTCollection 中所有视频导入 currHOTCollection，作为基础
+            [
+                "$match" =: ["_id" =: ["$exists" =: True]]
+            ],
+            [
+                "$out" =: currHOTCollection
+            ]]
+    hotPrecReport <- runDbAction $ aggregateCursor prevHOTCollection hotPrecPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    unless (null hotPrecReport) $
+        $(logError) $ "HOT precopy report: " <> pack (show hotPrecReport)
+    -- 把上主榜的曲子信息加入
+    let hotCurrPipe = [
+            [
+                "$match" =: [
+                    "on_main" =: True 
+                ]
+            ],
+            [
+                "$addFields" =: [
+                    "count" =: val 1
+                ]
+            ],
+            [
+                "$project" =: [
+                    "_id" =: 1,
+                    "is_hot" =: 1,
+                    "count" =: 1
+                ]
+            ],
+            [
+                "$merge" =: [
+                    "into" =: currHOTCollection,
+                    "whenMatched" =: [[
+                        "$set" =: [
+                            "is_hot" =: "$$new.is_hot",
+                            "count" =: unfoldField (raw "$count" + 1)
+                        ]
+                    ]],
+                    "whenNotMatched" =: "insert"
+                ]
+            ]
+            ]
+    -- let hotCurPipe =
+    --         [
+    --             "$match" =: [
+    --                 "on_main" =: True
+    --             ]
+    --         ]:
+    --         lookupUsingIdWithDefault tenWeeksAgoRankingInfoCollection
+    --             [("on_main", "ten_weeks_ago_on_main", val False)]
+    --         ++
+    --         lookupUsingIdWithDefault prevHOTCollection
+    --             [("count", "prev_count", val 0)] 
+    --         ++
+    --         [
+    --             [
+    --                 "$addFields" =: [
+    --                     "ten_weeks_diff" =: [
+    --                         "$cond" =: [
+    --                             val ("$ten_weeks_ago_on_main" `eqField` raw True),
+    --                             val (-1),
+    --                             val 0
+    --                         ]
+    --                     ],
+    --                     "curr_diff" =: [
+    --                         "$cond" =: [
+    --                             val ("$on_main_curr" `eqField` raw True),
+    --                             val 1,
+    --                             val 0
+    --                         ]
+    --                     ],
+    --                     "count" =: unfoldField (raw "$ten_weeks_diff" + raw "$curr_diff" + raw "$prev_count")
+                        
+    --                 ]
+    --             ],
+    --             [
+    --                 "$project" =: [
+    --                     "_id" =: 1,
+    --                     "count" =: 1,
+    --                     "is_hot" =: 1
+    --                 ]
+    --             ],
+    --             [
+    --                 "$merge" =: [
+    --                     "into" =: currHOTCollection,
+    --                     "whenMatched" =: "replace",
+    --                     "whenNotMatched" =: "insert"
+    --                 ]
+    --             ]]
+    hotCurrReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotCurrPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    unless (null hotCurrReport) $
+        $(logError) $ "HOT current report: " <> pack (show hotCurrReport)
+    -- 处理十周前计数
+    let hotTenWeeksAgoPipe = [
+            [
+                "$match" =: [
+                    "on_main" =: True
+                ]
+            ],
+            [
+                "$project" =: [
+                    "_id" =: 1
+                ]
+            ],
+            [
+                "$merge" =: [
+                    "into" =: tenWeeksAgoRankingInfoCollection,
+                    "whenMatched" =: [
+                        [
+                            "$set" =: [
+                                "count" =: unfoldField (raw "$count" - 1)
+                            ]
+                        ]
+                    ],
+                    "whenNotMatched" =: "discard"
+                ]
+            ]
+            ]
+    when tenWeeksAgoExists do
+        hotTenWeeksAgoReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotTenWeeksAgoPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+        unless (null hotTenWeeksAgoReport) $
+            $(logError) $ "HOT ten weeks ago report: " <> pack (show hotTenWeeksAgoReport)    
 
 
 genRankingQuery :: EachRankingConfig -> Selector
@@ -1170,8 +1344,8 @@ parseRankingInfoEntry doc = Cvse'RankingInfoEntry {
         }
 
 lookupRankingMetaInfoQuery :: Parsed Cvse'Rank -> Int -> Bool -> Query
-lookupRankingMetaInfoQuery rank index contain_unexamined =
-    let collection = genCollectionName rank index contain_unexamined in
+lookupRankingMetaInfoQuery rank index containUnexamined =
+    let collection = genCollectionName (EachRankingConfig {rank, index, containUnexamined}) in
     select [
         "_id" =: collection
     ] rankingMetaInfoCollectionName

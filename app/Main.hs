@@ -163,30 +163,48 @@ instance Cvse'server_ MyServer where
             <> " for rank " <> show param.rank <> ", index " <> show param.index 
             <> ", contain_unexamined=" <> show param.contain_unexamined
             <> ", lock=" <> show param.lock <> "."
-         let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
+         let collectionName = genCollectionName $ EachRankingConfig {
+            rank = param.rank,
+            index = fromIntegral param.index,
+            containUnexamined = param.contain_unexamined
+         }
          isLock <- runDbAction $ checkLock collectionName
          when isLock $
             throw $ "Collection " <> collectionName <> " is LOCKED. Aborting ranking calculation."
-         runDbAction $ dropCollection collectionName
+         runDbAction $ unlockCollection collectionName   -- Warning: Debug only, remove in production
+         $(logWarning) $ "Warning: unlockCollection called unconditionally for collection " <> collectionName <> ". This is for debugging only, remove in production!"
          let (period1, period2) = genPeriod param.rank (fromIntegral param.index)
          $(logInfo) $ "Calculating rankings for period from " <> show period1 <> " to " <> show period2 <> "."
-         let selector = genRankingQuery param.rank (fromIntegral param.index) param.contain_unexamined
+         let rankingConfig = EachRankingConfig {
+            rank = param.rank,
+            index = fromIntegral param.index,
+            containUnexamined = param.contain_unexamined
+         }
+         let selector = genRankingQuery rankingConfig
          $(logDebug) $ "Ranking query selector: " <> show selector
          runDbAction $ do
+            dropCollection collectionName
             cursor <- find ((select selector videoMetadataCollection) {project = ["_id" =: 1]})  
             docs <- rest cursor
             let bvids = map (at "_id") docs
             calculateVideoPoints bvids collectionName period1 period2
-         when param.lock $ do
-            runDbAction $ lockCollection collectionName
-            $(logInfo) $ "Locked collection " <> collectionName <> " after ranking calculation."
+         processSHAndHot rankingConfig
+         if param.lock then do
+            $(logInfo) $ "Locked collection " <> collectionName <> " after finishing ranking calculation."
+         else do
+            runDbAction $ unlockCollection collectionName
+            $(logInfo) $ "finished ranking calculation and unlocked collection " <> collectionName <> "."
          return (Cvse'reCalculateRankings'results { })
       )
    
    cvse'getAllRankingInfo server = handleParsed (
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received getAllRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
-         let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
+         let collectionName = genCollectionName $ EachRankingConfig {
+            rank = param.rank,
+            index = fromIntegral param.index,
+            containUnexamined = param.contain_unexamined
+         }
          entries <- runDbAction $ do
             getRankInfo (fromIntegral param.from_rank) (fromIntegral param.to_rank) collectionName 
             >>= mapCursorBatch (\doc -> Cvse'Index {
@@ -201,7 +219,11 @@ instance Cvse'server_ MyServer where
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received lookupRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", contain_unexamined=" <> show param.contain_unexamined 
             <> "with " <> show (length param.indices) <> " indices."
-         let collectionName = genCollectionName param.rank (fromIntegral param.index) param.contain_unexamined
+         let collectionName = genCollectionName $ EachRankingConfig {
+            rank = param.rank,
+            index = fromIntegral param.index,
+            containUnexamined = param.contain_unexamined
+         }
          entries <- runDbAction $ do
             find (select (lookupRankingInfoQuery param.indices) collectionName)
             >>= mapCursorBatch parseRankingInfoEntry
