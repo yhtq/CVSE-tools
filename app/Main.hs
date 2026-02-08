@@ -224,9 +224,15 @@ instance Cvse'server_ MyServer where
             index = fromIntegral param.index,
             containUnexamined = param.contain_unexamined
          }
-         entries <- runDbAction $ do
+         let recentTwoWeeksCountCollection = genRecentTenWeeksOnMainCountingCollectionName $ EachRankingConfig {
+            rank = param.rank,
+            index = fromIntegral param.index,
+            containUnexamined = param.contain_unexamined
+         }
+         entriesM <- runDbAction $ do
             find (select (lookupRankingInfoQuery param.indices) collectionName)
-            >>= mapCursorBatch parseRankingInfoEntry
+            >>= mapCursorBatch (parseRankingInfoEntry recentTwoWeeksCountCollection)
+         entries <- sequence entriesM
          $(logInfo) $ "lookupRankingInfo found " <> show (length entries) <> " entries."
          return (Cvse'lookupRankingInfo'results { entries = entries })
       )

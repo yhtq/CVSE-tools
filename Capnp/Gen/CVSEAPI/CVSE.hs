@@ -1238,7 +1238,7 @@ type instance (R.ReprFor Cvse'RankingInfoEntry) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'RankingInfoEntry) where
     typeId  = 16290349068181940150
 instance (C.TypedStruct Cvse'RankingInfoEntry) where
-    numStructWords  = 18
+    numStructWords  = 19
     numStructPtrs  = 4
 instance (C.Allocate Cvse'RankingInfoEntry) where
     type AllocHint Cvse'RankingInfoEntry = ()
@@ -1272,7 +1272,10 @@ data instance C.Parsed Cvse'RankingInfoEntry
         ,scoreB :: (RP.Parsed Std_.Double)
         ,scoreC :: (RP.Parsed Std_.Double)
         ,totalScore :: (RP.Parsed Std_.Double)
-        ,rank :: (RP.Parsed Std_.Int32)}
+        ,rank :: (RP.Parsed Std_.Int32)
+        ,specialRank :: (RP.Parsed Cvse'RankingInfoEntry'SpecialRank)
+        ,rankPosition :: (RP.Parsed Cvse'RankingInfoEntry'RankPosition)
+        ,onMainCountInTenWeeks :: (RP.Parsed Std_.Int32)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'RankingInfoEntry))
 deriving instance (Std_.Eq (C.Parsed Cvse'RankingInfoEntry))
@@ -1299,7 +1302,10 @@ instance (C.Parse Cvse'RankingInfoEntry (C.Parsed Cvse'RankingInfoEntry)) where
                                         <*> (GH.parseField #scoreB raw_)
                                         <*> (GH.parseField #scoreC raw_)
                                         <*> (GH.parseField #totalScore raw_)
-                                        <*> (GH.parseField #rank raw_))
+                                        <*> (GH.parseField #rank raw_)
+                                        <*> (GH.parseField #specialRank raw_)
+                                        <*> (GH.parseField #rankPosition raw_)
+                                        <*> (GH.parseField #onMainCountInTenWeeks raw_))
 instance (C.Marshal Cvse'RankingInfoEntry (C.Parsed Cvse'RankingInfoEntry)) where
     marshalInto raw_ Cvse'RankingInfoEntry{..} = (do
         (GH.encodeField #avid avid raw_)
@@ -1325,6 +1331,9 @@ instance (C.Marshal Cvse'RankingInfoEntry (C.Parsed Cvse'RankingInfoEntry)) wher
         (GH.encodeField #scoreC scoreC raw_)
         (GH.encodeField #totalScore totalScore raw_)
         (GH.encodeField #rank rank raw_)
+        (GH.encodeField #specialRank specialRank raw_)
+        (GH.encodeField #rankPosition rankPosition raw_)
+        (GH.encodeField #onMainCountInTenWeeks onMainCountInTenWeeks raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "avid" GH.Slot Cvse'RankingInfoEntry Basics.Text) where
@@ -1373,6 +1382,90 @@ instance (GH.HasField "totalScore" GH.Slot Cvse'RankingInfoEntry Std_.Double) wh
     fieldByLabel  = (GH.dataField 0 17 64 0)
 instance (GH.HasField "rank" GH.Slot Cvse'RankingInfoEntry Std_.Int32) where
     fieldByLabel  = (GH.dataField 32 0 32 0)
+instance (GH.HasField "specialRank" GH.Slot Cvse'RankingInfoEntry Cvse'RankingInfoEntry'SpecialRank) where
+    fieldByLabel  = (GH.dataField 16 0 16 0)
+instance (GH.HasField "rankPosition" GH.Slot Cvse'RankingInfoEntry Cvse'RankingInfoEntry'RankPosition) where
+    fieldByLabel  = (GH.dataField 0 18 16 0)
+instance (GH.HasField "onMainCountInTenWeeks" GH.Slot Cvse'RankingInfoEntry Std_.Int32) where
+    fieldByLabel  = (GH.dataField 32 18 32 0)
+data Cvse'RankingInfoEntry'SpecialRank 
+    = Cvse'RankingInfoEntry'SpecialRank'normal 
+    | Cvse'RankingInfoEntry'SpecialRank'sh 
+    | Cvse'RankingInfoEntry'SpecialRank'hot 
+    | Cvse'RankingInfoEntry'SpecialRank'unknown' Std_.Word16
+    deriving(Std_.Eq
+            ,Std_.Show
+            ,Generics.Generic)
+type instance (R.ReprFor Cvse'RankingInfoEntry'SpecialRank) = (R.Data R.Sz16)
+instance (C.HasTypeId Cvse'RankingInfoEntry'SpecialRank) where
+    typeId  = 15749196977886194512
+instance (Std_.Enum Cvse'RankingInfoEntry'SpecialRank) where
+    toEnum n_ = case n_ of
+        0 ->
+            Cvse'RankingInfoEntry'SpecialRank'normal
+        1 ->
+            Cvse'RankingInfoEntry'SpecialRank'sh
+        2 ->
+            Cvse'RankingInfoEntry'SpecialRank'hot
+        tag_ ->
+            (Cvse'RankingInfoEntry'SpecialRank'unknown' (Std_.fromIntegral tag_))
+    fromEnum value_ = case value_ of
+        (Cvse'RankingInfoEntry'SpecialRank'normal) ->
+            0
+        (Cvse'RankingInfoEntry'SpecialRank'sh) ->
+            1
+        (Cvse'RankingInfoEntry'SpecialRank'hot) ->
+            2
+        (Cvse'RankingInfoEntry'SpecialRank'unknown' tag_) ->
+            (Std_.fromIntegral tag_)
+instance (C.IsWord Cvse'RankingInfoEntry'SpecialRank) where
+    fromWord w_ = (Std_.toEnum (Std_.fromIntegral w_))
+    toWord v_ = (Std_.fromIntegral (Std_.fromEnum v_))
+instance (C.Parse Cvse'RankingInfoEntry'SpecialRank Cvse'RankingInfoEntry'SpecialRank) where
+    parse  = GH.parseEnum
+    encode  = GH.encodeEnum
+instance (C.AllocateList Cvse'RankingInfoEntry'SpecialRank) where
+    type ListAllocHint Cvse'RankingInfoEntry'SpecialRank = Std_.Int
+instance (C.EstimateListAlloc Cvse'RankingInfoEntry'SpecialRank Cvse'RankingInfoEntry'SpecialRank)
+data Cvse'RankingInfoEntry'RankPosition 
+    = Cvse'RankingInfoEntry'RankPosition'main 
+    | Cvse'RankingInfoEntry'RankPosition'side 
+    | Cvse'RankingInfoEntry'RankPosition'none 
+    | Cvse'RankingInfoEntry'RankPosition'unknown' Std_.Word16
+    deriving(Std_.Eq
+            ,Std_.Show
+            ,Generics.Generic)
+type instance (R.ReprFor Cvse'RankingInfoEntry'RankPosition) = (R.Data R.Sz16)
+instance (C.HasTypeId Cvse'RankingInfoEntry'RankPosition) where
+    typeId  = 14003003230286851195
+instance (Std_.Enum Cvse'RankingInfoEntry'RankPosition) where
+    toEnum n_ = case n_ of
+        0 ->
+            Cvse'RankingInfoEntry'RankPosition'main
+        1 ->
+            Cvse'RankingInfoEntry'RankPosition'side
+        2 ->
+            Cvse'RankingInfoEntry'RankPosition'none
+        tag_ ->
+            (Cvse'RankingInfoEntry'RankPosition'unknown' (Std_.fromIntegral tag_))
+    fromEnum value_ = case value_ of
+        (Cvse'RankingInfoEntry'RankPosition'main) ->
+            0
+        (Cvse'RankingInfoEntry'RankPosition'side) ->
+            1
+        (Cvse'RankingInfoEntry'RankPosition'none) ->
+            2
+        (Cvse'RankingInfoEntry'RankPosition'unknown' tag_) ->
+            (Std_.fromIntegral tag_)
+instance (C.IsWord Cvse'RankingInfoEntry'RankPosition) where
+    fromWord w_ = (Std_.toEnum (Std_.fromIntegral w_))
+    toWord v_ = (Std_.fromIntegral (Std_.fromEnum v_))
+instance (C.Parse Cvse'RankingInfoEntry'RankPosition Cvse'RankingInfoEntry'RankPosition) where
+    parse  = GH.parseEnum
+    encode  = GH.encodeEnum
+instance (C.AllocateList Cvse'RankingInfoEntry'RankPosition) where
+    type ListAllocHint Cvse'RankingInfoEntry'RankPosition = Std_.Int
+instance (C.EstimateListAlloc Cvse'RankingInfoEntry'RankPosition Cvse'RankingInfoEntry'RankPosition)
 data Cvse'RankingMetaInfoStat 
 type instance (R.ReprFor Cvse'RankingMetaInfoStat) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'RankingMetaInfoStat) where

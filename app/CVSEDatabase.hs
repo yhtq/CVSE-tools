@@ -435,19 +435,18 @@ danmakuField = "$danmaku"
 
 -- 我们使用的算分公式如下：
 -- 基本公式
--- 播放点赞分享得分 + 收藏硬币得分 + 评论弹幕得分←
--- 播放点赞分享得分：
--- 得点A = 播放 + 点赞 + 分享*10
--- 修正A = 得点B * 修正B/得点A(最大值:0.5，最小值：0，投稿两周以内的新曲最小值 = 根号修正A*根号0.5)
--- 播放点赞分享得分 = 得点A * 修正A
--- 收藏硬币得分：
--- 得点B = 2 * 收藏 + 3 * 硬币，且同时不超过收藏数的7倍和硬币数的24倍←
--- 修正B = (得点B/播放) * 25 (最大值:12.5，最小值：0)
--- 收藏硬币得分 = 得点B * 修正B
--- 评论弹幕得分：
--- 得点 C = 评论 + 弹幕
--- 修正C = 得点B / 得点C (最大值:5，最小值：0)
--- 评论弹幕得分 = 得点C * 修正C
+-- 总分=得点A×修正A+得点B×修正B+得点C×修正C
+
+-- 得点A=播放÷2+点赞×4+分享×50
+-- 得点B=收藏×硬币÷(收藏+硬币×3)×108
+-- 得点C=（评论+弹幕×2）×70
+-- 三个得点下限最低为0
+-- 然后收藏+硬币*3的值≤0时候，得点b也限制为0
+-- 修正A=(得点A+得点B×10)÷(得点A×10+得点B)÷2
+-- 修正B=得点B÷(得点A×9+得点B)×10÷3
+-- 修正C=(得点A+得点B×10)÷(得点A×9+得点B+得点C)÷3
+
+-- 稿件发布时间距集计时间≤14天（336小时）的稿件，修正A下限为1
 -- ：所有修正的小数点四舍五入保留前两位，总分四舍五入至整数←
 
 -- 给定待排名的视频信息 Cursor，记录排行信息的 Collection 名，获得开始时间的 Period 和结束时间的 Period，计算并存储视频得分信息
@@ -555,40 +554,47 @@ calculateVideoPoints bvids collection (start1, end1) (start2, end2) = do
             ] ]
         pointsStage =
             [ "$addFields" =: [
-                "pointA" =: unfoldField (viewField + likeField + 10 * shareField),
-                "pointB" =:
-                    let ori = 2 * favoriteField + 3 * coinField in
-                    let clamped = minField (7 * favoriteField) (24 * coinField) in
-                    unfoldField $ minField ori clamped,
-                "pointC" =: unfoldField (replyField + danmakuField)
+                "pointA" =: unfoldField (maxField 0 (viewField / 2 + likeField * 4 + shareField * 50)),
+                "pointB" =: unfoldField (
+                    iteField
+                        (raw $ lteField (favoriteField + coinField * 3) 0)
+                        (raw 0)
+                        (maxField 0 (safeDivField (favoriteField * coinField) (favoriteField + coinField * 3) 0 * 108))),
+                "pointC" =: unfoldField (maxField 0 ((replyField + danmakuField * 2) * 70))
             ] ]
         fixBStage = [
             "$addFields" =: [
-                "fixB" =:
-                    let fixBOri = safeDivField (25 * "$pointB") viewField 12.5 in
-                    let clamped = clampField fixBOri 0 12.5 in
-                    unfoldField $ roundFixField clamped
+                "fixB" =: unfoldField (
+                    safeDivField "$pointB" ("$pointA" * 9 + "$pointB") 0 * 10 / 3
+                )
             ] ]
         fixCStage =
             [ "$addFields" =: [
-                "fixC" =:
-                    let fixCOri = safeDivField "$pointB" "$pointC" 5 in
-                    let clamped = clampField fixCOri 0 5 in
-                    unfoldField $ roundFixField clamped
+                "fixC" =: unfoldField (
+                    safeDivField
+                        ("$pointA" + "$pointB" * 10)
+                        ("$pointA" * 9 + "$pointB" + "$pointC")
+                        0
+                    / 3
+                )
             ] ]
         fixAStage =
             [ "$addFields" =: [
                 "fixA" =:
-                    let baseFixA = safeDivField "$pointB" "$pointA" 0.5 in
-                    let clampedFixA = clampField baseFixA 0 0.5 in
-                    let newMinFixA = sqrtField clampedFixA * sqrtField 0.5 in
+                    let baseFixA =
+                            safeDivField
+                                ("$pointA" + "$pointB" * 10)
+                                ("$pointA" * 10 + "$pointB")
+                                0
+                            / 2
+                    in
                     let pubdateInTwoWeeks = raw ["$gte" =: [val "$meta.pubdate", val twoWeeksAgo]] in
                     let result = iteField
                             pubdateInTwoWeeks
-                            (clampField baseFixA newMinFixA 0.5)
-                            clampedFixA
+                            (maxField baseFixA 1)
+                            baseFixA
                     in
-                    unfoldField $ roundFixField result
+                    unfoldField result
             ] ]
         scoreStage =
             [ "$addFields" =: [
@@ -617,7 +623,7 @@ calculateVideoPoints bvids collection (start1, end1) (start2, end2) = do
                 "prev_data_id" =: unfoldField (iteField
                         (raw $ "$isNew" `eqField` raw True)
                         (raw Null)
-                        (raw ["_id" =: "$prev._id"]))
+                        (raw "$prev._id"))
             ]]
         cleanStage3 = [
             "$project" =: [
@@ -794,7 +800,7 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
         -- HOT 统计是统计近十周的上主榜次数 (curr |-| 0 到 curr |-| 9)，因此只要在上周的 HOT 统计基础上，减去 curr |-| 10，再加上 curr |-| 0 即可
         tenWeeksAgoRankingInfoCollection = genCollectionName (config |-| 10)
     -- drop 掉当前的 SH 和 HOT 统计集合
-    runDbAction $ do 
+    runDbAction $ do
         dropCollection currSHCollection
         dropCollection currHOTCollection
         createIndex (DBA.index currSHCollection ["rank" =: (-1), "totalScore" =: (-1)])
@@ -869,7 +875,7 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                     "whenNotMatched" =: "discard"
                 ]
             ]]
-    let cleanA = modify (select [] currRankingInfoCollection) 
+    let cleanA = modify (select [] currRankingInfoCollection)
                     [
                         "$unset" =: [
                             "is_sh" =: 1,
@@ -1048,12 +1054,12 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                     processingAux
         processingAux
     -- SH 和 HOT 状态稳定后，进行最终的排序，并清理临时字段
-    runDbAction $ do 
-        aggregateCursor currRankingInfoCollection 
-            (resortingPipe False) 
+    runDbAction $ do
+        aggregateCursor currRankingInfoCollection
+            (resortingPipe False)
             (AggregateConfig {allowDiskUse = True}) >>= rest
         cleanA
-    
+
     -- 最后，更新 currSHCollection 和 currHOTCollection
     in_first_three_cond <- in_first_three
     on_main_cond <- on_main
@@ -1148,7 +1154,7 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
     let hotCurrPipe = [
             [
                 "$match" =: [
-                    "on_main" =: True 
+                    "on_main" =: True
                 ]
             ],
             [
@@ -1206,7 +1212,7 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
     --                         ]
     --                     ],
     --                     "count" =: unfoldField (raw "$ten_weeks_diff" + raw "$curr_diff" + raw "$prev_count")
-                        
+
     --                 ]
     --             ],
     --             [
@@ -1255,7 +1261,7 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
     when tenWeeksAgoExists do
         hotTenWeeksAgoReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotTenWeeksAgoPipe (AggregateConfig {allowDiskUse = True}) >>= rest
         unless (null hotTenWeeksAgoReport) $
-            $(logError) $ "HOT ten weeks ago report: " <> pack (show hotTenWeeksAgoReport)    
+            $(logError) $ "HOT ten weeks ago report: " <> pack (show hotTenWeeksAgoReport)
 
 
 genRankingQuery :: EachRankingConfig -> Selector
@@ -1274,7 +1280,7 @@ genRankingQuery (EachRankingConfig {rank=rank, index=index, containUnexamined=co
     ])
 
 recordDiffTime :: NominalDiffTime
-recordDiffTime = realToFrac (120 * 60) -- 120 minutes
+recordDiffTime = realToFrac (24 * 60 * 60 - 1)  -- 24 hours - 1 second
 
 genPeriod :: Parsed Cvse'Rank -> Int -> (Period, Period)
 genPeriod rank index =
@@ -1316,14 +1322,55 @@ lookupRankingInfoQuery indices =
     let bvids = map (\index -> index.bvid) indices in
     ["_id" =: ["$in" =: bvids]]
 
-parseRankingInfoEntry :: Document -> Parsed Cvse'RankingInfoEntry
-parseRankingInfoEntry doc = Cvse'RankingInfoEntry {
+findOneUsingId :: forall a es. (Show a, Val a, Emb IO :> es, Throw ErrMessage :> es, DataBaseTableState :> es) => a -> Collection -> Eff (DatabaseIO ': es) Document
+findOneUsingId vid collection = do
+    mdoc <- runDbAction $ findOne (select ["_id" =: vid] collection)
+    case mdoc of
+        Just doc -> return doc
+        Nothing -> throw $ "Document with id " <> (pack $ show vid) <> " not found in collection " <> collection
+
+parseRankingInfoEntry :: forall es. (Emb IO :> es, Throw ErrMessage :> es, DataBaseTableState :> es) => Collection -> Document -> Eff (DatabaseIO ': es) (Parsed Cvse'RankingInfoEntry)
+parseRankingInfoEntry recentTwoWeeksCountCollection doc = do
+    let curr_id = valueAt "curr_data_id" doc
+    -- mdoc <- runDbAction $ findOne (select ["_id" =: curr_id] videoStatsCollection)
+    let find_data data_id = parseRecordingDataEntry <$> findOneUsingId data_id videoStatsCollection
+    prev <- case valueAt "prev_data_id" doc of
+        Null -> return $ Cvse'RecordingDataEntry {
+            avid = "",
+            bvid = "",
+            date = buildTime (MkSystemTime 0 0),
+            view = 0,
+            like = 0,
+            share = 0,
+            favorite = 0,
+            coin = 0,
+            reply = 0,
+            danmaku = 0
+        }
+        _prev_id -> find_data _prev_id
+    curr_doc <- find_data curr_id
+    let specialRankStr = at specialRankField doc :: Text
+    specialRank <- case specialRankStr of
+            _ | specialRankStr == shContent -> return Cvse'RankingInfoEntry'SpecialRank'sh
+              | specialRankStr == hotContent -> return Cvse'RankingInfoEntry'SpecialRank'hot
+              | specialRankStr == normalContent -> return Cvse'RankingInfoEntry'SpecialRank'normal
+              | otherwise -> throw $ "Unknown special rank content: " <> specialRankStr
+    let rankingPos
+          | (at "on_main" doc :: Bool) = Cvse'RankingInfoEntry'RankPosition'main
+          | (at "on_side" doc :: Bool) = Cvse'RankingInfoEntry'RankPosition'side
+          | otherwise = Cvse'RankingInfoEntry'RankPosition'none
+    recentTenWeeksCount <- runDbAction $ do
+        mdoc <- findOne (select ["_id" =: valueAt "_id" doc] recentTwoWeeksCountCollection)
+        case mdoc of
+            Just d -> return (fromIntegral $ at "count" d :: Int)
+            Nothing -> return 0
+    return Cvse'RankingInfoEntry {
             avid = at "avid" doc,
             bvid = at "_id" doc,
             isNew = at "isNew" doc,
             rank = at "rank" doc,
-            curr = parseRecordingDataEntry $ at "curr" doc,
-            prev = parseRecordingDataEntry $ at "prev" doc,
+            curr = curr_doc,
+            prev = prev,
             view = at "view" doc,
             like = at "like" doc,
             share = at "share" doc,
@@ -1340,7 +1387,10 @@ parseRankingInfoEntry doc = Cvse'RankingInfoEntry {
             scoreA = at "scoreA" doc,
             scoreB = at "scoreB" doc,
             scoreC = at "scoreC" doc,
-            totalScore = at "totalScore" doc
+            totalScore = at "totalScore" doc,
+            specialRank = specialRank,
+            rankPosition = rankingPos,
+            onMainCountInTenWeeks = (fromIntegral recentTenWeeksCount)
         }
 
 lookupRankingMetaInfoQuery :: Parsed Cvse'Rank -> Int -> Bool -> Query
