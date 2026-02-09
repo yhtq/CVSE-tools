@@ -105,7 +105,7 @@ instance (C.HasTypeId Cvse'updateModifyEntry'params) where
     typeId  = 9856680309677037086
 instance (C.TypedStruct Cvse'updateModifyEntry'params) where
     numStructWords  = 0
-    numStructPtrs  = 1
+    numStructPtrs  = 2
 instance (C.Allocate Cvse'updateModifyEntry'params) where
     type AllocHint Cvse'updateModifyEntry'params = ()
     new _ = C.newTypedStruct
@@ -116,19 +116,24 @@ instance (C.AllocateList Cvse'updateModifyEntry'params) where
 instance (C.EstimateListAlloc Cvse'updateModifyEntry'params (C.Parsed Cvse'updateModifyEntry'params))
 data instance C.Parsed Cvse'updateModifyEntry'params
     = Cvse'updateModifyEntry'params 
-        {entries :: (RP.Parsed (R.List Cvse'ModifyEntry))}
+        {entries :: (RP.Parsed (R.List Cvse'ModifyEntry))
+        ,auth_token :: (RP.Parsed Basics.Text)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'updateModifyEntry'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'updateModifyEntry'params))
 instance (C.Parse Cvse'updateModifyEntry'params (C.Parsed Cvse'updateModifyEntry'params)) where
-    parse raw_ = (Cvse'updateModifyEntry'params <$> (GH.parseField #entries raw_))
+    parse raw_ = (Cvse'updateModifyEntry'params <$> (GH.parseField #entries raw_)
+                                                <*> (GH.parseField #auth_token raw_))
 instance (C.Marshal Cvse'updateModifyEntry'params (C.Parsed Cvse'updateModifyEntry'params)) where
     marshalInto raw_ Cvse'updateModifyEntry'params{..} = (do
         (GH.encodeField #entries entries raw_)
+        (GH.encodeField #auth_token auth_token raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "entries" GH.Slot Cvse'updateModifyEntry'params (R.List Cvse'ModifyEntry)) where
     fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "auth_token" GH.Slot Cvse'updateModifyEntry'params Basics.Text) where
+    fieldByLabel  = (GH.ptrField 1)
 data Cvse'updateModifyEntry'results 
 type instance (R.ReprFor Cvse'updateModifyEntry'results) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'updateModifyEntry'results) where
@@ -160,7 +165,7 @@ instance (C.HasTypeId Cvse'updateNewEntry'params) where
     typeId  = 17187972643465061944
 instance (C.TypedStruct Cvse'updateNewEntry'params) where
     numStructWords  = 1
-    numStructPtrs  = 1
+    numStructPtrs  = 2
 instance (C.Allocate Cvse'updateNewEntry'params) where
     type AllocHint Cvse'updateNewEntry'params = ()
     new _ = C.newTypedStruct
@@ -172,23 +177,28 @@ instance (C.EstimateListAlloc Cvse'updateNewEntry'params (C.Parsed Cvse'updateNe
 data instance C.Parsed Cvse'updateNewEntry'params
     = Cvse'updateNewEntry'params 
         {entries :: (RP.Parsed (R.List Cvse'RecordingNewEntry))
-        ,replace :: (RP.Parsed Std_.Bool)}
+        ,replace :: (RP.Parsed Std_.Bool)
+        ,auth_token :: (RP.Parsed Basics.Text)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'updateNewEntry'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'updateNewEntry'params))
 instance (C.Parse Cvse'updateNewEntry'params (C.Parsed Cvse'updateNewEntry'params)) where
     parse raw_ = (Cvse'updateNewEntry'params <$> (GH.parseField #entries raw_)
-                                             <*> (GH.parseField #replace raw_))
+                                             <*> (GH.parseField #replace raw_)
+                                             <*> (GH.parseField #auth_token raw_))
 instance (C.Marshal Cvse'updateNewEntry'params (C.Parsed Cvse'updateNewEntry'params)) where
     marshalInto raw_ Cvse'updateNewEntry'params{..} = (do
         (GH.encodeField #entries entries raw_)
         (GH.encodeField #replace replace raw_)
+        (GH.encodeField #auth_token auth_token raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "entries" GH.Slot Cvse'updateNewEntry'params (R.List Cvse'RecordingNewEntry)) where
     fieldByLabel  = (GH.ptrField 0)
 instance (GH.HasField "replace" GH.Slot Cvse'updateNewEntry'params Std_.Bool) where
     fieldByLabel  = (GH.dataField 0 0 1 0)
+instance (GH.HasField "auth_token" GH.Slot Cvse'updateNewEntry'params Basics.Text) where
+    fieldByLabel  = (GH.ptrField 1)
 data Cvse'updateNewEntry'results 
 type instance (R.ReprFor Cvse'updateNewEntry'results) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'updateNewEntry'results) where
@@ -220,7 +230,7 @@ instance (C.HasTypeId Cvse'updateRecordingDataEntry'params) where
     typeId  = 18402389460281104284
 instance (C.TypedStruct Cvse'updateRecordingDataEntry'params) where
     numStructWords  = 0
-    numStructPtrs  = 1
+    numStructPtrs  = 2
 instance (C.Allocate Cvse'updateRecordingDataEntry'params) where
     type AllocHint Cvse'updateRecordingDataEntry'params = ()
     new _ = C.newTypedStruct
@@ -231,19 +241,24 @@ instance (C.AllocateList Cvse'updateRecordingDataEntry'params) where
 instance (C.EstimateListAlloc Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params))
 data instance C.Parsed Cvse'updateRecordingDataEntry'params
     = Cvse'updateRecordingDataEntry'params 
-        {entries :: (RP.Parsed (R.List Cvse'RecordingDataEntry))}
+        {entries :: (RP.Parsed (R.List Cvse'RecordingDataEntry))
+        ,auth_token :: (RP.Parsed Basics.Text)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'updateRecordingDataEntry'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'updateRecordingDataEntry'params))
 instance (C.Parse Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params)) where
-    parse raw_ = (Cvse'updateRecordingDataEntry'params <$> (GH.parseField #entries raw_))
+    parse raw_ = (Cvse'updateRecordingDataEntry'params <$> (GH.parseField #entries raw_)
+                                                       <*> (GH.parseField #auth_token raw_))
 instance (C.Marshal Cvse'updateRecordingDataEntry'params (C.Parsed Cvse'updateRecordingDataEntry'params)) where
     marshalInto raw_ Cvse'updateRecordingDataEntry'params{..} = (do
         (GH.encodeField #entries entries raw_)
+        (GH.encodeField #auth_token auth_token raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "entries" GH.Slot Cvse'updateRecordingDataEntry'params (R.List Cvse'RecordingDataEntry)) where
     fieldByLabel  = (GH.ptrField 0)
+instance (GH.HasField "auth_token" GH.Slot Cvse'updateRecordingDataEntry'params Basics.Text) where
+    fieldByLabel  = (GH.ptrField 1)
 data Cvse'updateRecordingDataEntry'results 
 type instance (R.ReprFor Cvse'updateRecordingDataEntry'results) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'updateRecordingDataEntry'results) where
@@ -550,7 +565,7 @@ instance (C.HasTypeId Cvse'reCalculateRankings'params) where
     typeId  = 15435079461487451845
 instance (C.TypedStruct Cvse'reCalculateRankings'params) where
     numStructWords  = 1
-    numStructPtrs  = 1
+    numStructPtrs  = 2
 instance (C.Allocate Cvse'reCalculateRankings'params) where
     type AllocHint Cvse'reCalculateRankings'params = ()
     new _ = C.newTypedStruct
@@ -564,7 +579,8 @@ data instance C.Parsed Cvse'reCalculateRankings'params
         {rank :: (RP.Parsed Cvse'Rank)
         ,index :: (RP.Parsed Std_.Int32)
         ,contain_unexamined :: (RP.Parsed Std_.Bool)
-        ,lock :: (RP.Parsed Std_.Bool)}
+        ,lock :: (RP.Parsed Std_.Bool)
+        ,auth_token :: (RP.Parsed Basics.Text)}
     deriving(Generics.Generic)
 deriving instance (Std_.Show (C.Parsed Cvse'reCalculateRankings'params))
 deriving instance (Std_.Eq (C.Parsed Cvse'reCalculateRankings'params))
@@ -572,13 +588,15 @@ instance (C.Parse Cvse'reCalculateRankings'params (C.Parsed Cvse'reCalculateRank
     parse raw_ = (Cvse'reCalculateRankings'params <$> (GH.parseField #rank raw_)
                                                   <*> (GH.parseField #index raw_)
                                                   <*> (GH.parseField #contain_unexamined raw_)
-                                                  <*> (GH.parseField #lock raw_))
+                                                  <*> (GH.parseField #lock raw_)
+                                                  <*> (GH.parseField #auth_token raw_))
 instance (C.Marshal Cvse'reCalculateRankings'params (C.Parsed Cvse'reCalculateRankings'params)) where
     marshalInto raw_ Cvse'reCalculateRankings'params{..} = (do
         (GH.encodeField #rank rank raw_)
         (GH.encodeField #index index raw_)
         (GH.encodeField #contain_unexamined contain_unexamined raw_)
         (GH.encodeField #lock lock raw_)
+        (GH.encodeField #auth_token auth_token raw_)
         (Std_.pure ())
         )
 instance (GH.HasField "rank" GH.Slot Cvse'reCalculateRankings'params Cvse'Rank) where
@@ -589,6 +607,8 @@ instance (GH.HasField "contain_unexamined" GH.Slot Cvse'reCalculateRankings'para
     fieldByLabel  = (GH.dataField 32 0 1 0)
 instance (GH.HasField "lock" GH.Slot Cvse'reCalculateRankings'params Std_.Bool) where
     fieldByLabel  = (GH.dataField 33 0 1 0)
+instance (GH.HasField "auth_token" GH.Slot Cvse'reCalculateRankings'params Basics.Text) where
+    fieldByLabel  = (GH.ptrField 1)
 data Cvse'reCalculateRankings'results 
 type instance (R.ReprFor Cvse'reCalculateRankings'results) = (R.Ptr (Std_.Just R.Struct))
 instance (C.HasTypeId Cvse'reCalculateRankings'results) where

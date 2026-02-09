@@ -34,6 +34,7 @@ library
     , mongoDB
     , mtl
     , network-simple
+    , random
     , supervisors
     , template-haskell
     , text
@@ -61,6 +62,7 @@ executable CVSE-exe
     , mongoDB
     , mtl
     , network-simple
+    , random
     , supervisors
     , template-haskell
     , text

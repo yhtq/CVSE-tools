@@ -5,7 +5,7 @@ module Main (main) where
 import Prelude hiding (show, putStrLn)
 import Data.Csv
 import GHC.Generics (Generic)
-import Data.Text (Text, show, unpack)
+import Data.Text (Text, show, unpack, pack)
 import Data.Vector qualified as V
 import Data.Text.IO (putStrLn)
 import Data.Text.IO.Utf8 qualified as TIO
@@ -14,24 +14,28 @@ import DatabaseProvider
 import Control.Monad.Hefty (runEff, liftIO, raise, runPure, Eff, Emb, Throw, Catch, Ask)
 import Database.MongoDB
 import Control.Monad.Hefty.Except (throw, runCatch)
-import Control.Monad(void)
+import Control.Monad(void, when, unless)
 import Capnp (SomeServer, def, defaultLimit, export, handleParsed)
 import Capnp.Rpc (ConnConfig (..), handleConn, socketTransport, toClient, throwFailed)
 import Network.Simple.TCP (serve)
 import Supervisors (withSupervisor)
 import Logger
 import Colog (Severity (..))
+import Control.Concurrent (threadDelay)
 
 import Capnp.Gen.CVSEAPI.CVSE
 import CVSEDatabase
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import GHC.Base (when)
+import qualified System.Environment as TIO
+import System.Random (randomRIO)
 
 logFilePath :: FilePath
 logFilePath = "cvse_service.log"
 
 data MyServer = MyServer {
+   authToken :: Text,
    peer :: Text,
    databaseServer :: Host,
    databasePort :: Maybe Int,
@@ -67,9 +71,25 @@ mainWrapper server action = do
       Left err -> throwFailed err
       Right val -> return val
 
+checkToken :: MyServer -> Text -> IO Bool
+checkToken server token = do
+   if token == server.authToken then
+      return True
+   else do
+      -- 随机等待一段时间
+      delay <- randomRIO (100000, 500000)  -- 100ms to 500ms
+      threadDelay delay
+      return False
+
+unlessM :: Monad m => m Bool -> m () -> m ()
+unlessM b m = b >>= \x -> unless x m
+
+
 instance Cvse'server_ MyServer where
    cvse'updateModifyEntry server = handleParsed (
       \param -> mainWrapper server $ do
+            unlessM (liftIO $ checkToken server param.auth_token) $ 
+               throw $ "Unauthorized access: invalid auth token from client " <> server.peer <> "."
             $(logInfo) $ "Received ModifyRankEntry update from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
             runDbAction $
                updateMany videoMetadataCollection (fmap updateModifyRank param.entries)
@@ -77,6 +97,8 @@ instance Cvse'server_ MyServer where
       )
    cvse'updateNewEntry server = handleParsed (
       \param -> mainWrapper server $ do
+         unlessM (liftIO $ checkToken server param.auth_token) $ 
+            throw $ "Unauthorized access: invalid auth token from client " <> server.peer <> "."
          $(logInfo) $ "Received RecordingNewEntry from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
          writeResult <- runDbAction $ do
             let insertFun = if param.replace
@@ -86,7 +108,7 @@ instance Cvse'server_ MyServer where
                               (["_id" =: (at "_id" doc :: Text)], doc, [Upsert])
                         ) docs
                      return $ show writeResult
-                  else fmap show . insertAll videoMetadataCollection 
+                  else fmap show . insertAll videoMetadataCollection
             insertFun (fmap insertNewVideo param.entries)
          if param.replace then
             $(logDebug) $ "Database upsert result: " <> show writeResult
@@ -96,6 +118,8 @@ instance Cvse'server_ MyServer where
       )
    cvse'updateRecordingDataEntry server = handleParsed (
       \param -> mainWrapper server $ do
+         unlessM (liftIO $ checkToken server param.auth_token) $ 
+            throw $ "Unauthorized access: invalid auth token from client " <> server.peer <> "."
          $(logInfo) $ "Received RecordingDataEntry update from client: " <> server.peer <> " with " <> show (length param.entries) <> " entries."
          runDbAction $ do
             insertMany_ videoStatsCollection (fmap insertNewStats param.entries)
@@ -155,12 +179,14 @@ instance Cvse'server_ MyServer where
                ) param.indices
          return (Cvse'lookupOneDataInfo'results { entries = docs })
       )
-   
+
    cvse'reCalculateRankings server = handleParsed (
       \param -> mainWrapper server $ do
-         $(logInfo) 
-            $ "Received reCalculateRankings request from client: " <> server.peer 
-            <> " for rank " <> show param.rank <> ", index " <> show param.index 
+         unlessM (liftIO $ checkToken server param.auth_token) $ 
+            throw $ "Unauthorized access: invalid auth token from client " <> server.peer <> "."
+         $(logInfo)
+            $ "Received reCalculateRankings request from client: " <> server.peer
+            <> " for rank " <> show param.rank <> ", index " <> show param.index
             <> ", contain_unexamined=" <> show param.contain_unexamined
             <> ", lock=" <> show param.lock <> "."
          let collectionName = genCollectionName $ EachRankingConfig {
@@ -184,7 +210,7 @@ instance Cvse'server_ MyServer where
          $(logDebug) $ "Ranking query selector: " <> show selector
          runDbAction $ do
             dropCollection collectionName
-            cursor <- find ((select selector videoMetadataCollection) {project = ["_id" =: 1]})  
+            cursor <- find ((select selector videoMetadataCollection) {project = ["_id" =: 1]})
             docs <- rest cursor
             let bvids = map (at "_id") docs
             calculateVideoPoints bvids collectionName period1 period2
@@ -196,7 +222,7 @@ instance Cvse'server_ MyServer where
             $(logInfo) $ "finished ranking calculation and unlocked collection " <> collectionName <> "."
          return (Cvse'reCalculateRankings'results { })
       )
-   
+
    cvse'getAllRankingInfo server = handleParsed (
       \param -> mainWrapper server $ do
          $(logInfo) $ "Received getAllRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
@@ -206,7 +232,7 @@ instance Cvse'server_ MyServer where
             containUnexamined = param.contain_unexamined
          }
          entries <- runDbAction $ do
-            getRankInfo (fromIntegral param.from_rank) (fromIntegral param.to_rank) collectionName 
+            getRankInfo (fromIntegral param.from_rank) (fromIntegral param.to_rank) collectionName
             >>= mapCursorBatch (\doc -> Cvse'Index {
                bvid = at "_id" doc,
                avid = at "avid" doc
@@ -214,10 +240,10 @@ instance Cvse'server_ MyServer where
          $(logInfo) $ "getAllRankingInfo found " <> show (length entries) <> " entries."
          return (Cvse'getAllRankingInfo'results { entries = entries })
       )
-   
+
    cvse'lookupRankingInfo server = handleParsed (
       \param -> mainWrapper server $ do
-         $(logInfo) $ "Received lookupRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", contain_unexamined=" <> show param.contain_unexamined 
+         $(logInfo) $ "Received lookupRankingInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", contain_unexamined=" <> show param.contain_unexamined
             <> "with " <> show (length param.indices) <> " indices."
          let collectionName = genCollectionName $ EachRankingConfig {
             rank = param.rank,
@@ -236,10 +262,10 @@ instance Cvse'server_ MyServer where
          $(logInfo) $ "lookupRankingInfo found " <> show (length entries) <> " entries."
          return (Cvse'lookupRankingInfo'results { entries = entries })
       )
-   
+
    cvse'lookupRankingMetaInfo server = handleParsed (
       \param -> mainWrapper server $ do
-         $(logInfo) $ "Received lookupRankingMetaInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index 
+         $(logInfo) $ "Received lookupRankingMetaInfo request from client: " <> server.peer <> " for rank " <> show param.rank <> ", index " <> show param.index
             <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
          let query = lookupRankingMetaInfoQuery param.rank (fromIntegral param.index) param.contain_unexamined
          result <- runDbAction $ findOne query
@@ -247,7 +273,7 @@ instance Cvse'server_ MyServer where
             Just doc -> return (Cvse'lookupRankingMetaInfo'results {
                stat = parseRankingMetaInfoStat doc
             })
-            Nothing -> throw $ "No ranking meta info found for rank " <> show param.rank <> ", index " <> show param.index 
+            Nothing -> throw $ "No ranking meta info found for rank " <> show param.rank <> ", index " <> show param.index
                <> ", contain_unexamined=" <> show param.contain_unexamined <> "."
       )
 
@@ -259,14 +285,16 @@ main :: IO ()
 main = withSupervisor  $ \sup -> do
    let dbHost = host "127.0.0.1"
    let dbPort = Nothing
+   authToken <- TIO.getEnv "CVSE_AUTH_TOKEN"
    let dbName = "cvse_db"
    let server = MyServer {
          peer = "",
+         authToken = pack authToken,
          databaseServer = dbHost,
          databasePort = dbPort,
          databaseName = dbName
       }
-   putStrLn $ "Starting CVSE RPC server at " <> show serverAddr <> ":" <> show serverPort
+   putStrLn $ "Starting CVSE RPC server at " <> show serverAddr <> ":" <> show serverPort <> " with auth token: " <> show authToken
    serve serverAddr serverPort $ \(sock, addr) -> do
       let server1 = server { peer = show addr <> " " <> show sock }
       boot <- export @Cvse sup server1

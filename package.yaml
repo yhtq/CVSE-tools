@@ -21,6 +21,7 @@ dependencies:
     - network-simple
     - template-haskell
     - mtl
+    - random
 language: GHC2024
 default-extensions: LambdaCase,
     OverloadedStrings,
