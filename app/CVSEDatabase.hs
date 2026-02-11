@@ -965,16 +965,23 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
                 [
                     "$addFields" =: [
                         "ten_weeks_ago_on_main_diff" =: unfoldField (iteField
-                                (raw ("$ten_weeks_ago_on_main" `eqField` raw True))
+                                (raw "$ten_weeks_ago_on_main")
                                 (raw 1)
                                 (raw 0)),
                         "on_main_diff" =: unfoldField (iteField
                                 (raw on_main_cond)
                                 (raw 1)
                                 (raw 0)
-                        ),
+                        )
+                    ]
+                ],
+                [
+                    "$addFields" =: [
                         "count" =: unfoldField (raw "$prev_count" - raw "$ten_weeks_ago_on_main_diff" + raw "$on_main_diff")
-                        ,
+                    ]
+                ],
+                [
+                    "$addFields" =: [
                         "old_hot" =: unfoldField (iteField
                                 (raw isHot)
                                 (raw True)
@@ -1151,117 +1158,83 @@ processSHAndHot config@(EachRankingConfig {rank=rank, index=index, containUnexam
     unless (null hotPrecReport) $
         $(logError) $ "HOT precopy report: " <> pack (show hotPrecReport)
     -- 把上主榜的曲子信息加入
-    let hotCurrPipe = [
+    let hotCurrPipe =
             [
                 "$match" =: [
                     "on_main" =: True
                 ]
-            ],
+            ] :
+            lookupUsingIdWithDefault tenWeeksAgoRankingInfoCollection
+                [("on_main", "ten_weeks_ago_on_main", val False)]
+            ++
+            lookupUsingIdWithDefault prevHOTCollection
+                [("count", "prev_count", val 0)] 
+            ++
             [
-                "$addFields" =: [
-                    "count" =: val 1
-                ]
-            ],
-            [
-                "$project" =: [
-                    "_id" =: 1,
-                    "is_hot" =: 1,
-                    "count" =: 1
-                ]
-            ],
-            [
-                "$merge" =: [
-                    "into" =: currHOTCollection,
-                    "whenMatched" =: [[
-                        "$set" =: [
-                            "is_hot" =: "$$new.is_hot",
-                            "count" =: unfoldField (raw "$count" + 1)
-                        ]
-                    ]],
-                    "whenNotMatched" =: "insert"
-                ]
-            ]
-            ]
-    -- let hotCurPipe =
+                [
+                    "$addFields" =: [
+                        "ten_weeks_ago_on_main_diff" =: unfoldField (iteField
+                                (raw "$ten_weeks_ago_on_main")
+                                (raw 1)
+                                (raw 0)),
+                        "on_main_diff" =: unfoldField (iteField
+                                (raw on_main_cond)
+                                (raw 1)
+                                (raw 0)
+                        )
+                    ]
+                ],
+                [
+                    "$addFields" =: [
+                        "count" =: unfoldField (raw "$prev_count" - raw "$ten_weeks_ago_on_main_diff" + raw "$on_main_diff")
+                    ]
+                ],
+                [
+                    "$project" =: [
+                        "_id" =: 1,
+                        "count" =: 1
+                    ]
+                ],
+                [
+                    "$merge" =: [
+                        "into" =: currHOTCollection,
+                        "whenMatched" =: "replace",
+                        "whenNotMatched" =: "insert"
+                    ]
+                ]]
+    hotCurrReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotCurrPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    unless (null hotCurrReport) $
+        $(logError) $ "HOT current report: " <> pack (show hotCurrReport)
+    -- -- 处理十周前计数
+    -- let hotTenWeeksAgoPipe = [
     --         [
     --             "$match" =: [
     --                 "on_main" =: True
     --             ]
-    --         ]:
-    --         lookupUsingIdWithDefault tenWeeksAgoRankingInfoCollection
-    --             [("on_main", "ten_weeks_ago_on_main", val False)]
-    --         ++
-    --         lookupUsingIdWithDefault prevHOTCollection
-    --             [("count", "prev_count", val 0)] 
-    --         ++
+    --         ],
     --         [
-    --             [
-    --                 "$addFields" =: [
-    --                     "ten_weeks_diff" =: [
-    --                         "$cond" =: [
-    --                             val ("$ten_weeks_ago_on_main" `eqField` raw True),
-    --                             val (-1),
-    --                             val 0
+    --             "$project" =: [
+    --                 "_id" =: 1
+    --             ]
+    --         ],
+    --         [
+    --             "$merge" =: [
+    --                 "into" =: tenWeeksAgoRankingInfoCollection,
+    --                 "whenMatched" =: [
+    --                     [
+    --                         "$set" =: [
+    --                             "count" =: unfoldField (raw "$count" - 1)
     --                         ]
-    --                     ],
-    --                     "curr_diff" =: [
-    --                         "$cond" =: [
-    --                             val ("$on_main_curr" `eqField` raw True),
-    --                             val 1,
-    --                             val 0
-    --                         ]
-    --                     ],
-    --                     "count" =: unfoldField (raw "$ten_weeks_diff" + raw "$curr_diff" + raw "$prev_count")
-
-    --                 ]
-    --             ],
-    --             [
-    --                 "$project" =: [
-    --                     "_id" =: 1,
-    --                     "count" =: 1,
-    --                     "is_hot" =: 1
-    --                 ]
-    --             ],
-    --             [
-    --                 "$merge" =: [
-    --                     "into" =: currHOTCollection,
-    --                     "whenMatched" =: "replace",
-    --                     "whenNotMatched" =: "insert"
-    --                 ]
-    --             ]]
-    hotCurrReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotCurrPipe (AggregateConfig {allowDiskUse = True}) >>= rest
-    unless (null hotCurrReport) $
-        $(logError) $ "HOT current report: " <> pack (show hotCurrReport)
-    -- 处理十周前计数
-    let hotTenWeeksAgoPipe = [
-            [
-                "$match" =: [
-                    "on_main" =: True
-                ]
-            ],
-            [
-                "$project" =: [
-                    "_id" =: 1
-                ]
-            ],
-            [
-                "$merge" =: [
-                    "into" =: tenWeeksAgoRankingInfoCollection,
-                    "whenMatched" =: [
-                        [
-                            "$set" =: [
-                                "count" =: unfoldField (raw "$count" - 1)
-                            ]
-                        ]
-                    ],
-                    "whenNotMatched" =: "discard"
-                ]
-            ]
-            ]
-    when tenWeeksAgoExists do
-        hotTenWeeksAgoReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotTenWeeksAgoPipe (AggregateConfig {allowDiskUse = True}) >>= rest
-        unless (null hotTenWeeksAgoReport) $
-            $(logError) $ "HOT ten weeks ago report: " <> pack (show hotTenWeeksAgoReport)
+    --                     ]
+    --                 ],
+    --                 "whenNotMatched" =: "discard"
+    --             ]
+    --         ]
+    --         ]
+    -- when tenWeeksAgoExists do
+    --     hotTenWeeksAgoReport <- runDbAction $ aggregateCursor currRankingInfoCollection hotTenWeeksAgoPipe (AggregateConfig {allowDiskUse = True}) >>= rest
+    --     unless (null hotTenWeeksAgoReport) $
+    --         $(logError) $ "HOT ten weeks ago report: " <> pack (show hotTenWeeksAgoReport)
 
 
 genRankingQuery :: EachRankingConfig -> Selector
